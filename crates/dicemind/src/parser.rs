@@ -51,12 +51,14 @@ pub enum Expression {
 
 #[derive(Debug, Error)]
 pub enum ParsingError {
+    #[error("The string did not contain any expressions")]
+    EmptyExpression,
     #[error("Unbalanced left parenthese")]
     UnbalancedLeftParen,
     #[error("Unbalanced right parenthese")]
     UnbalancedRightParen,
     #[error("Undefined symbol")]
-    Symbol { char: char },
+    UndefinedSymbol { char: char },
     #[error("No operands")]
     NoOperands { operator: BinaryOperator },
 }
@@ -107,8 +109,14 @@ fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
     // This is a very old-school parser, boring but works
     let mut i = 0;
     while i < chars.len() {
+        let begin_i = i;
+
         while chars[i].is_whitespace() {
             i += 1;
+        }
+
+        if chars[i] == ')' {
+            return Err(ParsingError::UnbalancedRightParen);
         }
 
         if chars[i] == '(' {
@@ -120,15 +128,20 @@ fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
                     unmatched_left += 1;
                 } else if chars[j] == ')' {
                     unmatched_left -= 1;
-                    if unmatched_left == 0 { 
-                        let expr = _parse(&chars[i + 1..j])?;
-                        expression.push(Expression::Subexpression(Box::new(expr)));
-                        j += 1;
+                    if unmatched_left == 0 {
                         break;
                     }
                 }
 
                 j += 1;
+            }
+
+            if unmatched_left == 0 {
+                let expr = _parse(&chars[i + 1..j])?;
+                expression.push(Expression::Subexpression(Box::new(expr)));
+                j += 1;
+            } else {
+                return Err(ParsingError::UnbalancedLeftParen);
             }
 
             i = j;
@@ -179,8 +192,12 @@ fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
             if let Some(top_op) = operators.pop() {
                 if operator <= top_op {
                     // TODO: handle Nones
-                    let rhs = expression.pop().unwrap();
-                    let lhs = expression.pop().unwrap();
+                    let rhs = expression
+                        .pop()
+                        .ok_or(ParsingError::NoOperands { operator })?;
+                    let lhs = expression
+                        .pop()
+                        .ok_or(ParsingError::NoOperands { operator })?;
 
                     expression.push(Expression::Binop {
                         operator: top_op,
@@ -199,11 +216,20 @@ fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
 
             i += 1;
         }
+
+        if begin_i == i {
+            // Symbol not captured by any handler
+            return Err(ParsingError::UndefinedSymbol { char: chars[i] });
+        }
     }
 
     while let Some(operator) = operators.pop() {
-        let rhs = expression.pop().unwrap();
-        let lhs = expression.pop().unwrap();
+        let rhs = expression
+            .pop()
+            .ok_or(ParsingError::NoOperands { operator })?;
+        let lhs = expression
+            .pop()
+            .ok_or(ParsingError::NoOperands { operator })?;
 
         expression.push(Expression::Binop {
             operator,
@@ -212,7 +238,7 @@ fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
         });
     }
 
-    Ok(expression.pop().unwrap())
+    expression.pop().ok_or(ParsingError::EmptyExpression)
 }
 
 #[cfg(test)]
