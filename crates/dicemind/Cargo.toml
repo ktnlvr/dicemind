@@ -4,5 +4,6 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-num = "0.4.1"
+num = { verion = "0.4.1", features = ["rand"] }
+rand = "0.8.5"
 thiserror = "1.0.56"

@@ -1,13 +1,16 @@
-#![feature(coroutines)]
-#![feature(iter_from_coroutine)]
+use std::io::{stdin, stdout, Result as IOResult, Write};
 
-use std::io::{stdin, Result as IOResult, stdout, Write};
-
+use crate::interpreter::SimpleRoller;
 use crate::parser::parse;
+use crate::visitor::Visitor;
 
+mod interpreter;
 mod parser;
+mod visitor;
 
 pub fn main() -> IOResult<()> {
+    let mut simple_roller = SimpleRoller::default();
+
     loop {
         print!("dice> ");
         stdout().flush()?;
@@ -22,6 +25,9 @@ pub fn main() -> IOResult<()> {
 
         let parsed = parse(&buf);
         println!("{:?}", parsed);
+        if let Ok(expr) = parsed {
+            println!("{}", simple_roller.visit(expr));
+        }
     }
 
     Ok(())
