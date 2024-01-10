@@ -1,6 +1,6 @@
 use rand::{distributions::Uniform, Rng};
 
-use crate::{parser::Integer, visitor::Visitor};
+use crate::{parser::BinaryOperator, parser::Integer, visitor::Visitor};
 
 pub struct SimpleRoller {
     default_dice_size: Integer,
@@ -22,22 +22,17 @@ impl Default for SimpleRoller {
 
 impl Visitor<Integer> for SimpleRoller {
     fn visit_dice(&mut self, amount: Option<Integer>, power: Option<Integer>) -> Integer {
-        rand::thread_rng().sample(Uniform::new_inclusive(
-            amount.unwrap_or(1.into()),
-            power.unwrap_or(self.default_dice_size.clone()),
-        ))
+        let amount = amount.unwrap_or(1.into());
+        let power = power.unwrap_or(self.default_dice_size.clone());
+
+        rand::thread_rng().sample(Uniform::new_inclusive(amount.clone(), amount * power))
     }
 
     fn visit_constant(&mut self, c: Integer) -> Integer {
         c
     }
 
-    fn visit_binop(
-        &mut self,
-        op: crate::parser::BinaryOperator,
-        lhs: Integer,
-        rhs: Integer,
-    ) -> Integer {
+    fn visit_binop(&mut self, op: BinaryOperator, lhs: Integer, rhs: Integer) -> Integer {
         use crate::parser::BinaryOperator::*;
 
         match op {

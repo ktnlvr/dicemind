@@ -64,6 +64,10 @@ pub enum ParsingError {
 }
 
 fn parse_number(chars: &[char], i: &mut usize) -> Option<Integer> {
+    if *i >= chars.len() {
+        return None;
+    }
+
     if !chars[*i].is_digit(10) {
         return None;
     }
@@ -164,20 +168,19 @@ fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
         if chars[i] == 'd' {
             i += 1;
 
-            if i == chars.len() {
-                expression.push(Expression::Dice {
-                    amount: number,
-                    power: None,
-                });
-                break;
-            }
-
-            if let Some(power) = parse_number(&chars[..], &mut i) {
-                expression.push(Expression::Dice {
+            let dice = if let Some(power) = parse_number(&chars[..], &mut i) {
+                Expression::Dice {
                     amount: number,
                     power: if power.is_zero() { None } else { Some(power) },
-                });
-            }
+                }
+            } else {
+                Expression::Dice {
+                    amount: number,
+                    power: None,
+                }
+            };
+
+            expression.push(dice);
         } else {
             if let Some(number) = number {
                 expression.push(Expression::Constant(number));
