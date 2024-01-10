@@ -3,14 +3,35 @@ use thiserror::Error;
 
 pub type Integer = num::bigint::BigInt;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Clone, Copy, Hash)]
 pub enum BinaryOperator {
+    Equals,
+    LessThan,
+    GreaterThan,
     Add,
     Subtract,
     Multiply,
-    GreaterThan,
-    LessThan,
-    Equals,
+}
+
+impl Into<u8> for BinaryOperator {
+    fn into(self) -> u8 {
+        use BinaryOperator::*;
+
+        match self {
+            Equals | LessThan | GreaterThan => 3,
+            Multiply => 2,
+            Add | Subtract => 1,
+        }
+    }
+}
+
+impl Ord for BinaryOperator {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        let l: u8 = self.clone().into();
+        let r: u8 = other.clone().into();
+
+        l.cmp(&r)
+    }
 }
 
 #[derive(Debug)]
@@ -76,7 +97,10 @@ fn parse_operator(char: char) -> Option<BinaryOperator> {
 
 pub fn parse(input: &str) -> Result<Expression, ParsingError> {
     let chars: Vec<char> = input.chars().collect();
+    _parse(&chars[..])
+}
 
+fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
     let mut expression: Vec<Expression> = vec![];
     let mut operators: Vec<BinaryOperator> = vec![];
 
@@ -85,6 +109,29 @@ pub fn parse(input: &str) -> Result<Expression, ParsingError> {
     while i < chars.len() {
         while chars[i].is_whitespace() {
             i += 1;
+        }
+
+        if chars[i] == '(' {
+            let mut j = i;
+            let mut unmatched_left = 0;
+
+            while j < chars.len() {
+                if chars[j] == '(' {
+                    unmatched_left += 1;
+                } else if chars[j] == ')' {
+                    unmatched_left -= 1;
+                    if unmatched_left == 0 { 
+                        let expr = _parse(&chars[i + 1..j])?;
+                        expression.push(Expression::Subexpression(Box::new(expr)));
+                        j += 1;
+                        break;
+                    }
+                }
+
+                j += 1;
+            }
+
+            i = j;
         }
 
         if i == chars.len() {
@@ -154,7 +201,6 @@ pub fn parse(input: &str) -> Result<Expression, ParsingError> {
         }
     }
 
-    assert!(operators.len() + 1 == expression.len());
     while let Some(operator) = operators.pop() {
         let rhs = expression.pop().unwrap();
         let lhs = expression.pop().unwrap();
