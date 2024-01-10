@@ -1,0 +1,8 @@
+[package]
+name = "dicemind"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+num = "0.4.1"
+thiserror = "1.0.56"
