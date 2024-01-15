@@ -2,6 +2,7 @@ use num::Zero;
 use thiserror::Error;
 
 pub type Integer = num::bigint::BigInt;
+pub type PositiveInteger = num::bigint::BigUint;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Clone, Copy, Hash)]
 pub enum BinaryOperator {
@@ -37,8 +38,8 @@ impl Ord for BinaryOperator {
 #[derive(Debug)]
 pub enum Expression {
     Dice {
-        amount: Option<Integer>,
-        power: Option<Integer>,
+        amount: Option<PositiveInteger>,
+        power: Option<PositiveInteger>,
     },
     Binop {
         operator: BinaryOperator,
@@ -63,7 +64,7 @@ pub enum ParsingError {
     NoOperands { operator: BinaryOperator },
 }
 
-fn parse_number(chars: &[char], i: &mut usize) -> Option<Integer> {
+fn parse_number(chars: &[char], i: &mut usize) -> Option<PositiveInteger> {
     if *i >= chars.len() {
         return None;
     }
@@ -72,13 +73,13 @@ fn parse_number(chars: &[char], i: &mut usize) -> Option<Integer> {
         return None;
     }
 
-    let mut number = Integer::zero();
+    let mut number = PositiveInteger::zero();
     let mut len = 0u32;
 
     let max_len = chars[*i..].iter().take_while(|c| c.is_digit(10)).count() as u32;
     while let Some(d) = chars[*i].to_digit(10) {
         len += 1;
-        number += d * Integer::from(10u32).pow(max_len - len);
+        number += d * PositiveInteger::from(10u32).pow(max_len - len);
 
         *i += 1;
         if *i == chars.len() {
@@ -159,7 +160,7 @@ fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
 
         if i == chars.len() {
             if let Some(number) = number {
-                expression.push(Expression::Constant(number));
+                expression.push(Expression::Constant(number.into()));
             }
 
             break;
@@ -183,7 +184,7 @@ fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
             expression.push(dice);
         } else {
             if let Some(number) = number {
-                expression.push(Expression::Constant(number));
+                expression.push(Expression::Constant(number.into()));
             }
         }
 

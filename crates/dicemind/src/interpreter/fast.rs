@@ -1,0 +1,76 @@
+use num::bigint::RandBigInt;
+use num::{range, One, Zero};
+use rand::thread_rng;
+use thiserror::Error;
+
+use crate::parser::*;
+use crate::visitor::Visitor;
+
+#[derive(Default)]
+pub struct FastRoller {
+    count: u32,
+    power: u32,
+}
+
+impl FastRoller {
+    pub fn new(count: u32, power: u32) -> Self {
+        Self { count, power }
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum FastRollerError {
+    #[error("Value too large and can't fit inside 2^32!")]
+    ValueTooLarge,
+    #[error("The value has overflown! Too large!")]
+    Overflow,
+}
+
+impl Visitor<Result<i32, FastRollerError>> for FastRoller {
+    fn visit_dice(
+        &mut self,
+        count: Option<PositiveInteger>,
+        power: Option<PositiveInteger>,
+    ) -> Result<i32, FastRollerError> {
+        use FastRollerError::*;
+
+        let count = count.unwrap_or(PositiveInteger::one());
+        let power = power.unwrap_or(PositiveInteger::from(6u32));
+
+        let mut rng = thread_rng();
+        let mut sum = 0i32;
+
+        for _ in range(PositiveInteger::zero(), count) {
+            let n = rng.gen_biguint_below(&power) + PositiveInteger::one();
+
+            sum = sum
+                .checked_add(n.try_into().map_err(|_| ValueTooLarge)?)
+                .ok_or(Overflow)?;
+        }
+
+        Ok(sum)
+    }
+
+    fn visit_constant(&mut self, c: Integer) -> Result<i32, FastRollerError> {
+        c.try_into().map_err(|_| FastRollerError::ValueTooLarge)
+    }
+
+    fn visit_binop(
+        &mut self,
+        op: BinaryOperator,
+        lhs: Result<i32, FastRollerError>,
+        rhs: Result<i32, FastRollerError>,
+    ) -> Result<i32, FastRollerError> {
+        use BinaryOperator::*;
+        use FastRollerError::*;
+
+        match op {
+            Equals => todo!(),
+            LessThan => todo!(),
+            GreaterThan => todo!(),
+            Add => lhs?.checked_add(rhs?).ok_or(Overflow),
+            Subtract => lhs?.checked_sub(rhs?).ok_or(Overflow),
+            Multiply => lhs?.checked_mul(rhs?).ok_or(Overflow),
+        }
+    }
+}

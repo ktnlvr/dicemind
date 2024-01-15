@@ -1,15 +1,15 @@
 use std::io::{stdin, stdout, Result as IOResult, Write};
 
-use crate::interpreter::SimpleRoller;
-use crate::parser::parse;
-use crate::visitor::Visitor;
+use interpreter::FastRoller;
+
+use crate::{parser::parse, visitor::Visitor};
 
 mod interpreter;
 mod parser;
 mod visitor;
 
 pub fn main() -> IOResult<()> {
-    let mut simple_roller = SimpleRoller::default();
+    let mut fast_roller = FastRoller::default();
 
     loop {
         print!("dice> ");
@@ -26,7 +26,10 @@ pub fn main() -> IOResult<()> {
         let parsed = parse(&buf);
         println!("{:?}", parsed);
         if let Ok(expr) = parsed {
-            println!("{}", simple_roller.visit(expr));
+            match fast_roller.visit(expr) {
+                Ok(ok) => println!("{ok}"),
+                Err(err) => println!("{err}"),
+            }
         }
     }
 

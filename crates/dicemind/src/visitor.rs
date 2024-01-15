@@ -1,4 +1,4 @@
-use crate::parser::{BinaryOperator, Expression, Integer};
+use crate::parser::{BinaryOperator, Expression, Integer, PositiveInteger};
 
 pub trait Visitor<T> {
     fn visit(&mut self, expr: Expression) -> T {
@@ -15,7 +15,7 @@ pub trait Visitor<T> {
         }
     }
 
-    fn visit_dice(&mut self, amount: Option<Integer>, power: Option<Integer>) -> T;
+    fn visit_dice(&mut self, amount: Option<PositiveInteger>, power: Option<PositiveInteger>) -> T;
 
     fn visit_constant(&mut self, c: Integer) -> T;
 
