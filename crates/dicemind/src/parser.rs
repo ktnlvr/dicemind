@@ -38,7 +38,7 @@ impl Ord for BinaryOperator {
 #[derive(Debug)]
 pub enum Expression {
     Dice {
-        amount: Option<PositiveInteger>,
+        count: Option<PositiveInteger>,
         power: Option<PositiveInteger>,
     },
     Binop {
@@ -100,6 +100,22 @@ fn parse_operator(char: char) -> Option<BinaryOperator> {
         '=' => Some(BinaryOperator::Equals),
         _ => None,
     }
+}
+
+pub fn push_operator(
+    exprs: &mut Vec<Expression>,
+    operator: BinaryOperator,
+) -> Result<(), ParsingError> {
+    let rhs = exprs.pop().ok_or(ParsingError::NoOperands { operator })?;
+    let lhs = exprs.pop().ok_or(ParsingError::NoOperands { operator })?;
+
+    exprs.push(Expression::Binop {
+        operator,
+        lhs: Box::new(lhs),
+        rhs: Box::new(rhs),
+    });
+
+    Ok(())
 }
 
 pub fn parse(input: &str) -> Result<Expression, ParsingError> {
@@ -171,12 +187,12 @@ fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
 
             let dice = if let Some(power) = parse_number(&chars[..], &mut i) {
                 Expression::Dice {
-                    amount: number,
+                    count: number,
                     power: if power.is_zero() { None } else { Some(power) },
                 }
             } else {
                 Expression::Dice {
-                    amount: number,
+                    count: number,
                     power: None,
                 }
             };
@@ -195,20 +211,7 @@ fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
         if let Some(operator) = parse_operator(chars[i]) {
             if let Some(top_op) = operators.pop() {
                 if operator <= top_op {
-                    // TODO: handle Nones
-                    let rhs = expression
-                        .pop()
-                        .ok_or(ParsingError::NoOperands { operator })?;
-                    let lhs = expression
-                        .pop()
-                        .ok_or(ParsingError::NoOperands { operator })?;
-
-                    expression.push(Expression::Binop {
-                        operator: top_op,
-                        lhs: Box::new(lhs),
-                        rhs: Box::new(rhs),
-                    });
-
+                    push_operator(&mut expression, operator)?;
                     operators.push(operator);
                 } else {
                     operators.push(top_op);
@@ -228,18 +231,7 @@ fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
     }
 
     while let Some(operator) = operators.pop() {
-        let rhs = expression
-            .pop()
-            .ok_or(ParsingError::NoOperands { operator })?;
-        let lhs = expression
-            .pop()
-            .ok_or(ParsingError::NoOperands { operator })?;
-
-        expression.push(Expression::Binop {
-            operator,
-            lhs: Box::new(lhs),
-            rhs: Box::new(rhs),
-        });
+        push_operator(&mut expression, operator)?;
     }
 
     expression.pop().ok_or(ParsingError::EmptyExpression)

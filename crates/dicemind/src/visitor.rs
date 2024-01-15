@@ -3,7 +3,7 @@ use crate::parser::{BinaryOperator, Expression, Integer, PositiveInteger};
 pub trait Visitor<T> {
     fn visit(&mut self, expr: Expression) -> T {
         match expr {
-            Expression::Dice { amount, power } => self.visit_dice(amount, power),
+            Expression::Dice { count, power } => self.visit_dice(count, power),
             Expression::Binop { operator, lhs, rhs } => {
                 let lhs = self.visit(*lhs);
                 let rhs = self.visit(*rhs);
@@ -15,7 +15,7 @@ pub trait Visitor<T> {
         }
     }
 
-    fn visit_dice(&mut self, amount: Option<PositiveInteger>, power: Option<PositiveInteger>) -> T;
+    fn visit_dice(&mut self, count: Option<PositiveInteger>, power: Option<PositiveInteger>) -> T;
 
     fn visit_constant(&mut self, c: Integer) -> T;
 

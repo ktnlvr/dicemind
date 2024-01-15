@@ -12,7 +12,7 @@ pub fn main() -> IOResult<()> {
     let mut fast_roller = FastRoller::default();
 
     loop {
-        print!("dice? ");
+        print!("+ dice? ");
         stdout().flush()?;
 
         let mut buf = String::new();
@@ -24,11 +24,10 @@ pub fn main() -> IOResult<()> {
         }
 
         let parsed = parse(&buf);
-        println!("{:?}", parsed);
         if let Ok(expr) = parsed {
             match fast_roller.visit(expr) {
-                Ok(ok) => println!("{ok}"),
-                Err(err) => println!("{err}"),
+                Ok(ok) => println!(" \\ {ok}"),
+                Err(err) => println!(" \\ {err}"),
             }
         }
     }
