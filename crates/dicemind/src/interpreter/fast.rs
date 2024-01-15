@@ -6,15 +6,23 @@ use thiserror::Error;
 use crate::parser::*;
 use crate::visitor::Visitor;
 
-#[derive(Default)]
 pub struct FastRoller {
-    count: u32,
-    power: u32,
+    default_count: u32,
+    default_power: u32,
+}
+
+impl Default for FastRoller {
+    fn default() -> Self {
+        Self::new(1, 6)
+    }
 }
 
 impl FastRoller {
-    pub fn new(count: u32, power: u32) -> Self {
-        Self { count, power }
+    pub fn new(default_count: u32, default_power: u32) -> Self {
+        Self {
+            default_count,
+            default_power,
+        }
     }
 }
 
@@ -34,8 +42,8 @@ impl Visitor<Result<i32, FastRollerError>> for FastRoller {
     ) -> Result<i32, FastRollerError> {
         use FastRollerError::*;
 
-        let count = count.unwrap_or(PositiveInteger::one());
-        let power = power.unwrap_or(PositiveInteger::from(6u32));
+        let count = count.unwrap_or(PositiveInteger::from(self.default_count));
+        let power = power.unwrap_or(PositiveInteger::from(self.default_power));
 
         let mut rng = thread_rng();
         let mut sum = 0i32;
@@ -65,9 +73,9 @@ impl Visitor<Result<i32, FastRollerError>> for FastRoller {
         use FastRollerError::*;
 
         match op {
-            Equals => todo!(),
-            LessThan => todo!(),
-            GreaterThan => todo!(),
+            Equals => Ok((lhs? == rhs?) as i32),
+            LessThan => Ok((lhs? < rhs?) as i32),
+            GreaterThan => Ok((lhs? > rhs?) as i32),
             Add => lhs?.checked_add(rhs?).ok_or(Overflow),
             Subtract => lhs?.checked_sub(rhs?).ok_or(Overflow),
             Multiply => lhs?.checked_mul(rhs?).ok_or(Overflow),

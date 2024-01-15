@@ -12,7 +12,7 @@ pub fn main() -> IOResult<()> {
     let mut fast_roller = FastRoller::default();
 
     loop {
-        print!("dice> ");
+        print!("dice? ");
         stdout().flush()?;
 
         let mut buf = String::new();
