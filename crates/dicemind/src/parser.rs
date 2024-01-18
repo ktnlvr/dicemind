@@ -123,7 +123,34 @@ pub fn parse(input: &str) -> Result<Expression, ParsingError> {
     _parse(&chars[..])
 }
 
-fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
+pub fn parse_subexpr(chars: &[char]) -> Result<Option<(Expression, &[char], usize)>, ParsingError> {
+    if chars.len() == 0 {
+        return Ok(None);
+    }
+
+    if chars[0] != '(' {
+        return Ok(None);
+    }
+
+    let mut unmatched = 0;
+    let mut i = 0;
+
+    while i < chars.len() {
+        if chars[i] == '(' {
+            unmatched += 1;
+        } else if chars[i] == ')' {
+            unmatched -= 1;
+            if unmatched == 0 {
+                return Ok(Some((_parse(&chars[1..i])?, &chars[i + 1..], i + 1)));
+            }
+        }
+        i += 1;
+    }
+
+    return Ok(None)
+}
+
+fn _parse(mut chars: &[char]) -> Result<Expression, ParsingError> {
     let mut expression: Vec<Expression> = vec![];
     let mut operators: Vec<BinaryOperator> = vec![];
 
@@ -140,32 +167,9 @@ fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
             return Err(ParsingError::UnbalancedRightParen);
         }
 
-        if chars[i] == '(' {
-            let mut j = i;
-            let mut unmatched_left = 0;
-
-            while j < chars.len() {
-                if chars[j] == '(' {
-                    unmatched_left += 1;
-                } else if chars[j] == ')' {
-                    unmatched_left -= 1;
-                    if unmatched_left == 0 {
-                        break;
-                    }
-                }
-
-                j += 1;
-            }
-
-            if unmatched_left == 0 {
-                let expr = _parse(&chars[i + 1..j])?;
-                expression.push(Expression::Subexpression(Box::new(expr)));
-                j += 1;
-            } else {
-                return Err(ParsingError::UnbalancedLeftParen);
-            }
-
-            i = j;
+        if let Some((subexpr, _rest, len)) = parse_subexpr(&chars[i..])? {
+            expression.push(Expression::Subexpression(Box::new(subexpr)));
+            i += len;
         }
 
         if i == chars.len() {
