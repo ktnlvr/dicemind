@@ -24,11 +24,12 @@ pub fn main() -> IOResult<()> {
         }
 
         let parsed = parse(&buf);
-        if let Ok(expr) = parsed {
-            match fast_roller.visit(expr) {
-                Ok(ok) => println!(" \\ {ok}"),
-                Err(err) => println!(" \\ {err}"),
-            }
+        match parsed {
+            Ok(expr) => match fast_roller.visit(expr) {
+                Ok(ok) => println!("ok. \\ {ok}"),
+                Err(err) => println!("ERR: \\ {err}"),
+            },
+            Err(err) => println!("ERR: {err}"),
         }
     }
 

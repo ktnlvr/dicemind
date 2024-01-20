@@ -54,40 +54,40 @@ pub enum Expression {
 pub enum ParsingError {
     #[error("The string did not contain any expressions")]
     EmptyExpression,
-    #[error("Unbalanced left parenthese")]
+    #[error("Unbalanced left parenthis")]
     UnbalancedLeftParen,
-    #[error("Unbalanced right parenthese")]
+    #[error("Unbalanced right parenthis")]
     UnbalancedRightParen,
     #[error("Undefined symbol")]
     UndefinedSymbol { char: char },
     #[error("No operands")]
     NoOperands { operator: BinaryOperator },
+    #[error("Missing operator between operands")]
+    MissingOperator,
 }
 
-fn parse_number(chars: &[char], i: &mut usize) -> Option<PositiveInteger> {
-    if *i >= chars.len() {
+fn parse_number<'a>(chars: &'a [char]) -> Option<(PositiveInteger, &'a [char], usize)> {
+    if chars.len() == 0 {
         return None;
     }
 
-    if !chars[*i].is_digit(10) {
+    if !chars[0].is_digit(10) {
         return None;
     }
+
+    let digits: Vec<u8> = chars
+        .iter()
+        .cloned()
+        .map_while(|c| c.to_digit(10).map(|n| n as u8))
+        .collect();
+    let len = digits.len();
 
     let mut number = PositiveInteger::zero();
-    let mut len = 0u32;
-
-    let max_len = chars[*i..].iter().take_while(|c| c.is_digit(10)).count() as u32;
-    while let Some(d) = chars[*i].to_digit(10) {
-        len += 1;
-        number += d * PositiveInteger::from(10u32).pow(max_len - len);
-
-        *i += 1;
-        if *i == chars.len() {
-            break;
-        }
+    for (i, d) in digits.into_iter().enumerate() {
+        number += d * PositiveInteger::from(10u32).pow((len - i - 1) as u32);
     }
 
-    Some(number)
+    Some((number, &chars[1..], len))
 }
 
 fn parse_operator(char: char) -> Option<BinaryOperator> {
@@ -147,10 +147,10 @@ pub fn parse_subexpr(chars: &[char]) -> Result<Option<(Expression, &[char], usiz
         i += 1;
     }
 
-    return Ok(None)
+    return Err(ParsingError::UnbalancedLeftParen);
 }
 
-fn _parse(mut chars: &[char]) -> Result<Expression, ParsingError> {
+fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
     let mut expression: Vec<Expression> = vec![];
     let mut operators: Vec<BinaryOperator> = vec![];
 
@@ -170,46 +170,46 @@ fn _parse(mut chars: &[char]) -> Result<Expression, ParsingError> {
         if let Some((subexpr, _rest, len)) = parse_subexpr(&chars[i..])? {
             expression.push(Expression::Subexpression(Box::new(subexpr)));
             i += len;
+            continue;
         }
 
-        if i == chars.len() {
-            break;
-        }
+        let number = if let Some((n, _rest, len)) = parse_number(&chars[i..]) {
+            i += len;
+            Some(n)
+        } else {
+            None
+        };
 
-        let number = parse_number(&chars[..], &mut i);
-
-        if i == chars.len() {
-            if let Some(number) = number {
-                expression.push(Expression::Constant(number.into()));
-            }
-
-            break;
-        }
-
-        if chars[i] == 'd' {
+        if i < chars.len() && chars[i] == 'd' {
             i += 1;
 
-            let dice = if let Some(power) = parse_number(&chars[..], &mut i) {
-                Expression::Dice {
-                    count: number,
-                    power: if power.is_zero() { None } else { Some(power) },
+            let power = if let Some((power, _rest, len)) = parse_number(&chars[i..]) {
+                i += len;
+
+                if power.is_zero() {
+                    None
+                } else {
+                    Some(power)
                 }
             } else {
-                Expression::Dice {
-                    count: number,
-                    power: None,
-                }
+                None
             };
 
-            expression.push(dice);
+            expression.push(Expression::Dice {
+                count: number,
+                power,
+            });
+
+            continue;
         } else {
             if let Some(number) = number {
                 expression.push(Expression::Constant(number.into()));
+                continue;
             }
         }
 
-        if i == chars.len() {
-            break;
+        while chars[i].is_whitespace() {
+            i += 1;
         }
 
         if let Some(operator) = parse_operator(chars[i]) {
@@ -226,6 +226,7 @@ fn _parse(mut chars: &[char]) -> Result<Expression, ParsingError> {
             }
 
             i += 1;
+            continue;
         }
 
         if begin_i == i {
@@ -238,17 +239,34 @@ fn _parse(mut chars: &[char]) -> Result<Expression, ParsingError> {
         push_operator(&mut expression, operator)?;
     }
 
+    if expression.len() != operators.len() + 1 {
+        return Err(ParsingError::MissingOperator);
+    }
+
     expression.pop().ok_or(ParsingError::EmptyExpression)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::BinaryOperator;
+    use crate::parser::{parse, BinaryOperator, ParsingError};
 
     #[test]
     pub fn test_operator_priority() {
         assert!(BinaryOperator::Multiply > BinaryOperator::Subtract);
         assert!(BinaryOperator::Subtract > BinaryOperator::Add);
         assert!(BinaryOperator::Multiply > BinaryOperator::Add);
+    }
+
+    #[test]
+    pub fn test_missing_operator() {
+        assert!(matches!(
+            parse("2 + 3 4 + 5"),
+            Err(ParsingError::MissingOperator)
+        ));
+
+        assert!(matches!(
+            parse("(1 2) * 3"),
+            Err(ParsingError::MissingOperator)
+        ));
     }
 }
