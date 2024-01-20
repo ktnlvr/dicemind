@@ -1,4 +1,4 @@
-use num::bigint::RandBigInt;
+use num::bigint::{RandBigInt, Sign};
 use num::{range, One, Zero};
 use rand::thread_rng;
 use thiserror::Error;
@@ -37,12 +37,14 @@ pub enum FastRollerError {
 impl Visitor<Result<i32, FastRollerError>> for FastRoller {
     fn visit_dice(
         &mut self,
-        count: Option<PositiveInteger>,
+        count: Option<Integer>,
         power: Option<PositiveInteger>,
     ) -> Result<i32, FastRollerError> {
         use FastRollerError::*;
 
-        let count = count.unwrap_or(PositiveInteger::from(self.default_count));
+        let (sign, count) = count
+            .unwrap_or(Integer::from(self.default_count))
+            .into_parts();
         let power = power.unwrap_or(PositiveInteger::from(self.default_power));
 
         let mut rng = thread_rng();
@@ -56,7 +58,7 @@ impl Visitor<Result<i32, FastRollerError>> for FastRoller {
                 .ok_or(Overflow)?;
         }
 
-        Ok(sum)
+        Ok(if sign == Sign::Minus { -sum } else { sum })
     }
 
     fn visit_constant(&mut self, c: Integer) -> Result<i32, FastRollerError> {
@@ -80,5 +82,12 @@ impl Visitor<Result<i32, FastRollerError>> for FastRoller {
             Subtract => lhs?.checked_sub(rhs?).ok_or(Overflow),
             Multiply => lhs?.checked_mul(rhs?).ok_or(Overflow),
         }
+    }
+
+    fn visit_negation(
+        &mut self,
+        value: Result<i32, FastRollerError>,
+    ) -> Result<i32, FastRollerError> {
+        value.map(|n| -n)
     }
 }

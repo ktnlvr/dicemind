@@ -1,4 +1,6 @@
-use num::Zero;
+use std::ops::Mul;
+
+use num::{bigint::Sign, Zero};
 use thiserror::Error;
 
 pub type Integer = num::bigint::BigInt;
@@ -38,7 +40,7 @@ impl Ord for BinaryOperator {
 #[derive(Debug)]
 pub enum Expression {
     Dice {
-        count: Option<PositiveInteger>,
+        count: Option<Integer>,
         power: Option<PositiveInteger>,
     },
     Binop {
@@ -48,6 +50,7 @@ pub enum Expression {
     },
     Constant(Integer),
     Subexpression(Box<Expression>),
+    UnaryNegation(Box<Expression>),
 }
 
 #[derive(Debug, Error)]
@@ -151,7 +154,7 @@ pub fn parse_subexpr(chars: &[char]) -> Result<Option<(Expression, &[char], usiz
 }
 
 fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
-    let mut expression: Vec<Expression> = vec![];
+    let mut expressions: Vec<Expression> = vec![];
     let mut operators: Vec<BinaryOperator> = vec![];
 
     // This is a very old-school parser, boring but works
@@ -168,14 +171,35 @@ fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
         }
 
         if let Some((subexpr, _rest, len)) = parse_subexpr(&chars[i..])? {
-            expression.push(Expression::Subexpression(Box::new(subexpr)));
+            expressions.push(Expression::Subexpression(Box::new(subexpr)));
             i += len;
             continue;
         }
 
+        let sign = if operators.len() == 0 && expressions.len() == 0 && i + 1 < chars.len() {
+            match chars[i] {
+                '-' => {
+                    i += 1;
+                    Sign::Minus
+                }
+                '+' => {
+                    i += 1;
+                    Sign::Plus
+                }
+                _ => Sign::NoSign,
+            }
+        } else {
+            Sign::NoSign
+        };
+
         let number = if let Some((n, _rest, len)) = parse_number(&chars[i..]) {
             i += len;
-            Some(n)
+            let n: Integer = n.into();
+            Some(if sign == Sign::Minus {
+                n.mul(Integer::from(-1))
+            } else {
+                n
+            })
         } else {
             None
         };
@@ -195,17 +219,26 @@ fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
                 None
             };
 
-            expression.push(Expression::Dice {
+            let mut expr = Expression::Dice {
                 count: number,
                 power,
-            });
+            };
 
+            if sign == Sign::Minus {
+                expr = Expression::UnaryNegation(Box::new(expr))
+            }
+
+            expressions.push(expr);
             continue;
         } else {
             if let Some(number) = number {
-                expression.push(Expression::Constant(number.into()));
+                expressions.push(Expression::Constant(number.into()));
                 continue;
             }
+        }
+
+        if sign != Sign::NoSign {
+            i -= 1;
         }
 
         while chars[i].is_whitespace() {
@@ -215,7 +248,7 @@ fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
         if let Some(operator) = parse_operator(chars[i]) {
             if let Some(top_op) = operators.pop() {
                 if operator <= top_op {
-                    push_operator(&mut expression, operator)?;
+                    push_operator(&mut expressions, operator)?;
                     operators.push(operator);
                 } else {
                     operators.push(top_op);
@@ -236,14 +269,14 @@ fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
     }
 
     while let Some(operator) = operators.pop() {
-        push_operator(&mut expression, operator)?;
+        push_operator(&mut expressions, operator)?;
     }
 
-    if expression.len() != operators.len() + 1 {
+    if expressions.len() != operators.len() + 1 {
         return Err(ParsingError::MissingOperator);
     }
 
-    expression.pop().ok_or(ParsingError::EmptyExpression)
+    expressions.pop().ok_or(ParsingError::EmptyExpression)
 }
 
 #[cfg(test)]

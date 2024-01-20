@@ -1,3 +1,5 @@
+#![feature(box_patterns)]
+
 use std::io::{stdin, stdout, Result as IOResult, Write};
 
 use interpreter::FastRoller;
@@ -12,7 +14,7 @@ pub fn main() -> IOResult<()> {
     let mut fast_roller = FastRoller::default();
 
     loop {
-        print!("+ dice? ");
+        print!("dice? ");
         stdout().flush()?;
 
         let mut buf = String::new();
@@ -23,13 +25,12 @@ pub fn main() -> IOResult<()> {
             break;
         }
 
-        let parsed = parse(&buf);
-        match parsed {
+        match parse(&buf) {
             Ok(expr) => match fast_roller.visit(expr) {
-                Ok(ok) => println!("ok. \\ {ok}"),
-                Err(err) => println!("ERR: \\ {err}"),
+                Ok(ok) => println!("ok. {ok}"),
+                Err(err) => println!("err. {err}"),
             },
-            Err(err) => println!("ERR: {err}"),
+            Err(err) => println!("err. {err}"),
         }
     }
 
