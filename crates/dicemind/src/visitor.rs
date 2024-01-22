@@ -1,11 +1,20 @@
-use crate::parser::{BinaryOperator, Expression, Integer, PositiveInteger};
+use crate::parser::{BinaryOperator, Expression, Integer};
 
 pub trait Visitor<T> {
     fn visit(&mut self, expr: Expression) -> T {
         use Expression::*;
 
         match expr {
-            Dice { count, power, augmentations: _ } => self.visit_dice(count, power),
+            Dice {
+                count,
+                power,
+                augmentations: _,
+            } => {
+                let count = count.map(|b| self.visit(*b));
+                let power = power.map(|b| self.visit(*b));
+
+                self.visit_dice(count, power)
+            }
             Binop { operator, lhs, rhs } => {
                 let lhs = self.visit(*lhs);
                 let rhs = self.visit(*rhs);
@@ -24,7 +33,7 @@ pub trait Visitor<T> {
 
     fn visit_negation(&mut self, value: T) -> T;
 
-    fn visit_dice(&mut self, count: Option<Integer>, power: Option<PositiveInteger>) -> T;
+    fn visit_dice(&mut self, count: Option<T>, power: Option<T>) -> T;
 
     fn visit_constant(&mut self, c: Integer) -> T;
 

@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use num::Zero;
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 use thiserror::Error;
 
 pub type Integer = num::bigint::BigInt;
@@ -41,8 +41,8 @@ impl Ord for BinaryOperator {
 #[derive(Debug)]
 pub enum Expression {
     Dice {
-        count: Option<Integer>,
-        power: Option<PositiveInteger>,
+        count: Option<Box<Expression>>,
+        power: Option<Box<Expression>>,
         augmentations: SmallVec<[Augmentation; 1]>,
     },
     Binop {
@@ -85,7 +85,7 @@ pub enum ParsingError {
     UnbalancedLeftParen,
     #[error("Unbalanced right parenthis")]
     UnbalancedRightParen,
-    #[error("Undefined symbol")]
+    #[error("Undefined symbol `{char}`")]
     UndefinedSymbol { char: char },
     #[error("No operands")]
     NoOperands { operator: BinaryOperator },
@@ -115,6 +115,38 @@ fn parse_number<'a>(chars: &'a [char]) -> Option<(PositiveInteger, &'a [char])> 
     }
 
     Some((number, &chars[len..]))
+}
+
+fn parse_dice(mut chars: &[char]) -> Result<Option<(Expression, &[char])>, ParsingError> {
+    let count = parse_term(chars)?.map(|(count, rest)| {
+        chars = rest;
+        Box::new(count)
+    });
+
+    if chars.len() == 0 {
+        return Ok(None);
+    }
+
+    if chars[0] == 'd' {
+        let power = if let Some((expr, rest)) = parse_term(&chars[1..])? {
+            chars = rest;
+            Some(Box::new(expr))
+        } else {
+            chars = &chars[1..];
+            None
+        };
+
+        return Ok(Some((
+            Expression::Dice {
+                count,
+                power,
+                augmentations: smallvec![],
+            },
+            chars,
+        )));
+    }
+
+    Ok(None)
 }
 
 fn parse_operator(char: char) -> Option<BinaryOperator> {
@@ -155,6 +187,10 @@ pub fn parse_subexpr(chars: &[char]) -> Result<Option<(Expression, &[char])>, Pa
         return Ok(None);
     }
 
+    if chars[0] == ')' {
+        return Err(ParsingError::UnbalancedRightParen);
+    }
+
     if chars[0] != '(' {
         return Ok(None);
     }
@@ -178,15 +214,23 @@ pub fn parse_subexpr(chars: &[char]) -> Result<Option<(Expression, &[char])>, Pa
 }
 
 pub fn parse_term(chars: &[char]) -> Result<Option<(Expression, &[char])>, ParsingError> {
-    if let Some((n, rest)) = parse_number(chars) {
-        return Ok(Some((Expression::Constant(n.into()), rest)));
-    }
+    Ok(if let Some((n, rest)) = parse_number(chars) {
+        Some((Expression::Constant(n.into()), rest))
+    } else if let Some((subexpr, rest)) = parse_subexpr(chars)? {
+        Some((Expression::Subexpression(Box::new(subexpr)), rest))
+    } else {
+        None
+    })
+}
 
-    if let Some((subexpr, rest)) = parse_subexpr(chars)? {
-        return Ok(Some((Expression::Subexpression(Box::new(subexpr)), rest)));
-    }
-
-    Ok(None)
+pub fn parse_term_or_dice(chars: &[char]) -> Result<Option<(Expression, &[char])>, ParsingError> {
+    Ok(if let Some((dice, rest)) = parse_dice(chars)? {
+        Some((dice, rest))
+    } else if let Some((term, rest)) = parse_term(chars)? {
+        Some((term, rest))
+    } else {
+        None
+    })
 }
 
 fn _parse(mut chars: &[char]) -> Result<Expression, ParsingError> {
@@ -202,7 +246,7 @@ fn _parse(mut chars: &[char]) -> Result<Expression, ParsingError> {
             break;
         }
 
-        if let Some((term, rest)) = parse_term(chars)? {
+        if let Some((term, rest)) = parse_term_or_dice(chars)? {
             expressions.push(term);
             chars = rest;
         } else {
