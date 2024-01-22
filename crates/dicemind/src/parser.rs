@@ -249,8 +249,26 @@ fn _parse(mut chars: &[char]) -> Result<Expression, ParsingError> {
             break;
         }
 
+        // TODO: clean this up?
+        let id = |expr: Expression| expr;
+        let unary_wrapper = if expressions.len() == 0 && operators.len() == 0 {
+            match chars[0] {
+                '-' => {
+                    chars = &chars[1..];
+                    |expr: Expression| Expression::UnaryNegation(Box::new(expr))
+                }
+                '+' => {
+                    chars = &chars[1..];
+                    id
+                }
+                _ => id,
+            }
+        } else {
+            id
+        };
+
         if let Some((term, rest)) = parse_term_or_dice(chars)? {
-            expressions.push(term);
+            expressions.push(unary_wrapper(term));
             chars = rest;
         } else {
             return Err(ParsingError::UndefinedSymbol { char: chars[0] });
