@@ -1,7 +1,7 @@
-use std::{cmp::Ordering, ops::Mul};
+use std::cmp::Ordering;
 
-use num::{bigint::Sign, Zero};
-use smallvec::{smallvec, SmallVec};
+use num::Zero;
+use smallvec::SmallVec;
 use thiserror::Error;
 
 pub type Integer = num::bigint::BigInt;
@@ -93,7 +93,7 @@ pub enum ParsingError {
     MissingOperator,
 }
 
-fn parse_number<'a>(chars: &'a [char]) -> Option<(PositiveInteger, &'a [char], usize)> {
+fn parse_number<'a>(chars: &'a [char]) -> Option<(PositiveInteger, &'a [char])> {
     if chars.len() == 0 {
         return None;
     }
@@ -114,7 +114,7 @@ fn parse_number<'a>(chars: &'a [char]) -> Option<(PositiveInteger, &'a [char], u
         number += d * PositiveInteger::from(10u32).pow((len - i - 1) as u32);
     }
 
-    Some((number, &chars[1..], len))
+    Some((number, &chars[len..]))
 }
 
 fn parse_operator(char: char) -> Option<BinaryOperator> {
@@ -150,7 +150,7 @@ pub fn parse(input: &str) -> Result<Expression, ParsingError> {
     _parse(&chars[..])
 }
 
-pub fn parse_subexpr(chars: &[char]) -> Result<Option<(Expression, &[char], usize)>, ParsingError> {
+pub fn parse_subexpr(chars: &[char]) -> Result<Option<(Expression, &[char])>, ParsingError> {
     if chars.len() == 0 {
         return Ok(None);
     }
@@ -168,7 +168,7 @@ pub fn parse_subexpr(chars: &[char]) -> Result<Option<(Expression, &[char], usiz
         } else if chars[i] == ')' {
             unmatched -= 1;
             if unmatched == 0 {
-                return Ok(Some((_parse(&chars[1..i])?, &chars[i + 1..], i + 1)));
+                return Ok(Some((_parse(&chars[1..i])?, &chars[i + 1..])));
             }
         }
         i += 1;
@@ -177,106 +177,50 @@ pub fn parse_subexpr(chars: &[char]) -> Result<Option<(Expression, &[char], usiz
     return Err(ParsingError::UnbalancedLeftParen);
 }
 
-fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
+pub fn parse_term(chars: &[char]) -> Result<Option<(Expression, &[char])>, ParsingError> {
+    if let Some((n, rest)) = parse_number(chars) {
+        return Ok(Some((Expression::Constant(n.into()), rest)));
+    }
+
+    if let Some((subexpr, rest)) = parse_subexpr(chars)? {
+        return Ok(Some((Expression::Subexpression(Box::new(subexpr)), rest)));
+    }
+
+    Ok(None)
+}
+
+fn _parse(mut chars: &[char]) -> Result<Expression, ParsingError> {
     let mut expressions: Vec<Expression> = vec![];
     let mut operators: Vec<BinaryOperator> = vec![];
 
-    // This is a very old-school parser, boring but works
-    let mut i = 0;
-    while i < chars.len() {
-        let begin_i = i;
-
-        while chars[i].is_whitespace() {
-            i += 1;
+    while chars.len() != 0 {
+        while chars[0].is_whitespace() {
+            chars = &chars[1..];
         }
 
-        if chars[i] == ')' {
-            return Err(ParsingError::UnbalancedRightParen);
+        if chars.len() == 0 {
+            break;
         }
 
-        if let Some((subexpr, _rest, len)) = parse_subexpr(&chars[i..])? {
-            expressions.push(Expression::Subexpression(Box::new(subexpr)));
-            i += len;
-            continue;
-        }
-
-        let sign = if operators.len() == 0 && expressions.len() == 0 && i + 1 < chars.len() {
-            match chars[i] {
-                '-' => {
-                    i += 1;
-                    Sign::Minus
-                }
-                '+' => {
-                    i += 1;
-                    Sign::Plus
-                }
-                _ => Sign::NoSign,
-            }
+        if let Some((term, rest)) = parse_term(chars)? {
+            expressions.push(term);
+            chars = rest;
         } else {
-            Sign::NoSign
-        };
-
-        let number = if let Some((n, _rest, len)) = parse_number(&chars[i..]) {
-            i += len;
-            let n: Integer = n.into();
-            Some(if sign == Sign::Minus {
-                n.mul(Integer::from(-1))
-            } else {
-                n
-            })
-        } else {
-            None
-        };
-
-        if i < chars.len() && chars[i] == 'd' {
-            i += 1;
-
-            let power = if let Some((power, _rest, len)) = parse_number(&chars[i..]) {
-                i += len;
-
-                if power.is_zero() {
-                    None
-                } else {
-                    Some(power)
-                }
-            } else if i < chars.len() && chars[i] == '%' {
-                i += 1;
-                Some(PositiveInteger::from(100u32))
-            } else {
-                None
-            };
-
-            let mut expr = Expression::Dice {
-                count: number,
-                power,
-                augmentations: smallvec![],
-            };
-
-            if sign == Sign::Minus {
-                expr = Expression::UnaryNegation(Box::new(expr))
-            }
-
-            expressions.push(expr);
-            continue;
-        } else {
-            if let Some(number) = number {
-                expressions.push(Expression::Constant(number.into()));
-                continue;
-            }
+            return Err(ParsingError::UndefinedSymbol { char: chars[0] });
         }
 
-        if sign != Sign::NoSign {
-            i -= 1;
+        if chars.len() == 0 {
+            break;
         }
 
-        while chars[i].is_whitespace() {
-            i += 1;
+        while chars[0].is_whitespace() {
+            chars = &chars[1..];
         }
 
-        if let Some(operator) = parse_operator(chars[i]) {
+        if let Some(operator) = parse_operator(chars[0]) {
             if let Some(top_op) = operators.pop() {
                 if operator <= top_op {
-                    push_operator(&mut expressions, operator)?;
+                    push_operator(&mut expressions, top_op)?;
                     operators.push(operator);
                 } else {
                     operators.push(top_op);
@@ -286,13 +230,8 @@ fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
                 operators.push(operator);
             }
 
-            i += 1;
+            chars = &chars[1..];
             continue;
-        }
-
-        if begin_i == i {
-            // Symbol not captured by any handler
-            return Err(ParsingError::UndefinedSymbol { char: chars[i] });
         }
     }
 

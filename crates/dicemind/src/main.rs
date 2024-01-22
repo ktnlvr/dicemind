@@ -26,10 +26,13 @@ pub fn main() -> IOResult<()> {
         }
 
         match parse(&buf) {
-            Ok(expr) => match fast_roller.visit(expr) {
-                Ok(ok) => println!("ok. {ok}"),
-                Err(err) => println!("err. {err}"),
-            },
+            Ok(expr) => {
+                dbg!(&expr);
+                match fast_roller.visit(expr) {
+                    Ok(ok) => println!("ok. {ok}"),
+                    Err(err) => println!("err. {err}"),
+                }
+            }
             Err(err) => println!("err. {err}"),
         }
     }
