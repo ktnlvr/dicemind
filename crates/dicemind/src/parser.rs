@@ -1,6 +1,7 @@
-use std::ops::Mul;
+use std::{cmp::Ordering, ops::Mul};
 
 use num::{bigint::Sign, Zero};
+use smallvec::{smallvec, SmallVec};
 use thiserror::Error;
 
 pub type Integer = num::bigint::BigInt;
@@ -42,6 +43,7 @@ pub enum Expression {
     Dice {
         count: Option<Integer>,
         power: Option<PositiveInteger>,
+        augmentations: SmallVec<[Augmentation; 1]>,
     },
     Binop {
         operator: BinaryOperator,
@@ -51,6 +53,28 @@ pub enum Expression {
     Constant(Integer),
     Subexpression(Box<Expression>),
     UnaryNegation(Box<Expression>),
+}
+
+#[derive(Debug)]
+pub enum DependentAugmentKind {
+    Drop,
+    Keep,
+    Reroll,
+}
+
+#[derive(Debug)]
+pub enum Augmentation {
+    Dependent {
+        kind: DependentAugmentKind,
+        relation: Ordering,
+        n: Option<PositiveInteger>,
+    },
+    Emphasis {
+        e: PositiveInteger,
+    },
+    Explode {
+        n: PositiveInteger,
+    },
 }
 
 #[derive(Debug, Error)]
@@ -222,6 +246,7 @@ fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
             let mut expr = Expression::Dice {
                 count: number,
                 power,
+                augmentations: smallvec![],
             };
 
             if sign == Sign::Minus {

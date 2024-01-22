@@ -6,4 +6,5 @@ edition = "2021"
 [dependencies]
 num = { verion = "0.4.1", features = ["rand"] }
 rand = "0.8.5"
+smallvec = "1.13.1"
 thiserror = "1.0.56"

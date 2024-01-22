@@ -5,7 +5,7 @@ pub trait Visitor<T> {
         use Expression::*;
 
         match expr {
-            Dice { count, power } => self.visit_dice(count, power),
+            Dice { count, power, augmentations: _ } => self.visit_dice(count, power),
             Binop { operator, lhs, rhs } => {
                 let lhs = self.visit(*lhs);
                 let rhs = self.visit(*rhs);
