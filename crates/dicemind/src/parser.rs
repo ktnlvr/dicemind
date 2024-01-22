@@ -239,6 +239,9 @@ fn _parse(chars: &[char]) -> Result<Expression, ParsingError> {
                 } else {
                     Some(power)
                 }
+            } else if i < chars.len() && chars[i] == '%' {
+                i += 1;
+                Some(PositiveInteger::from(100u32))
             } else {
                 None
             };
