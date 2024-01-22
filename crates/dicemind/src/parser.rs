@@ -131,6 +131,9 @@ fn parse_dice(mut chars: &[char]) -> Result<Option<(Expression, &[char])>, Parsi
         let power = if let Some((expr, rest)) = parse_term(&chars[1..])? {
             chars = rest;
             Some(Box::new(expr))
+        } else if chars.len() >= 2 && chars[1] == '%' {
+            chars = &chars[2..];
+            Some(Box::new(Expression::Constant(100.into())))
         } else {
             chars = &chars[1..];
             None
