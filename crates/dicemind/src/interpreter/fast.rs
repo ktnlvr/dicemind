@@ -26,9 +26,9 @@ impl FastRoller {
 
 #[derive(Debug, Error)]
 pub enum FastRollerError {
-    #[error("Value too large and can't fit inside 2^32!")]
+    #[error("Value too large and can't fit inside 2^31 - 1")]
     ValueTooLarge,
-    #[error("The value has overflown! Too large!")]
+    #[error("The value has overflown, the result was too large")]
     Overflow,
 }
 
@@ -57,7 +57,7 @@ impl Visitor<Result<i32, FastRollerError>> for FastRoller {
                 .ok_or(Overflow)?;
         }
 
-        Ok(sign * sum)
+        Ok(sum.checked_mul(sign).ok_or(Overflow)?)
     }
 
     fn visit_constant(&mut self, c: Integer) -> Result<i32, FastRollerError> {
@@ -87,6 +87,8 @@ impl Visitor<Result<i32, FastRollerError>> for FastRoller {
         &mut self,
         value: Result<i32, FastRollerError>,
     ) -> Result<i32, FastRollerError> {
-        value.map(|n| -n)
+        value
+            .map(|n| n.checked_mul(-1).ok_or(FastRollerError::Overflow))
+            .flatten()
     }
 }

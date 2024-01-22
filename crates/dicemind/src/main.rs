@@ -1,4 +1,5 @@
 #![feature(box_patterns)]
+#![feature(result_flattening)]
 
 use std::io::{stdin, stdout, Result as IOResult, Write};
 
