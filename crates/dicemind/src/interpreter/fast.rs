@@ -46,6 +46,10 @@ impl Visitor<Result<i32, FastRollerError>> for FastRoller {
 
         let power = power.unwrap_or(Ok(self.default_power as i32))?;
 
+        if count == 0 || power == 0 {
+            return Ok(0);
+        }
+
         let mut rng = thread_rng();
         let mut sum = 0i32;
 
