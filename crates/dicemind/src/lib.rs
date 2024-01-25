@@ -1,11 +1,6 @@
+#![deny(unsafe_op_in_unsafe_fn)]
 #![feature(box_patterns)]
 #![feature(result_flattening)]
-
-use crate::{
-    interpreter::{convolve, BigRoller},
-    parser::{parse, PositiveInteger},
-    visitor::Visitor,
-};
 
 pub mod interpreter;
 pub mod parser;

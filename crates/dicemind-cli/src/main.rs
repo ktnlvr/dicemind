@@ -19,8 +19,7 @@ pub fn main() -> IOResult<()> {
 
         match parse(&buf) {
             Ok(expr) => {
-                dbg!(&expr);
-                match fast_roller.visit(expr) {
+                match fast_roller.roll(expr) {
                     Ok(res) => println!("ok. {res}"),
                     Err(err) => println!("err. {err}"),
                 }

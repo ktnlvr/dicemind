@@ -19,6 +19,12 @@ pub enum FastRollerError {
     Overflow,
 }
 
+impl FastRoller {
+    pub fn roll(&mut self, expr: Expression) -> Result<i32, FastRollerError> {
+        self.visit(expr)
+    }
+}
+
 impl Visitor<Result<i32, FastRollerError>> for FastRoller {
     fn visit_dice(
         &mut self,
