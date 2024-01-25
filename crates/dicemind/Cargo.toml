@@ -4,6 +4,7 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
+memoize = "0.4.2"
 num = { verion = "0.4.1", features = ["rand"] }
 rand = "0.8.5"
 smallvec = "1.13.1"

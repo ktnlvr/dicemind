@@ -4,15 +4,27 @@
 use std::io::{stdin, stdout, Result as IOResult, Write};
 
 use interpreter::FastRoller;
+use num::One;
 
-use crate::{parser::parse, visitor::Visitor};
+use crate::{
+    interpreter::{convolve, BigRoller},
+    parser::{parse, PositiveInteger},
+    visitor::Visitor,
+};
 
 mod interpreter;
 mod parser;
 mod visitor;
 
 pub fn main() -> IOResult<()> {
-    let mut fast_roller = FastRoller::default();
+    let mut fast_roller = BigRoller::default();
+    println!(
+        "{:?}",
+        convolve(
+            vec![PositiveInteger::one(); 6],
+            vec![PositiveInteger::one(); 6]
+        )
+    );
 
     loop {
         print!("dice? ");
@@ -29,10 +41,7 @@ pub fn main() -> IOResult<()> {
         match parse(&buf) {
             Ok(expr) => {
                 dbg!(&expr);
-                match fast_roller.visit(expr) {
-                    Ok(ok) => println!("ok. {ok}"),
-                    Err(err) => println!("err. {err}"),
-                }
+                println!("{}", fast_roller.visit(expr))
             }
             Err(err) => println!("err. {err}"),
         }

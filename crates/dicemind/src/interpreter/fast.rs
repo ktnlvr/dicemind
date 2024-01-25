@@ -4,24 +4,11 @@ use thiserror::Error;
 use crate::parser::*;
 use crate::visitor::Visitor;
 
+use super::RollerConfig;
+
+#[derive(Debug, Default)]
 pub struct FastRoller {
-    default_count: u32,
-    default_power: u32,
-}
-
-impl Default for FastRoller {
-    fn default() -> Self {
-        Self::new(1, 6)
-    }
-}
-
-impl FastRoller {
-    pub fn new(default_count: u32, default_power: u32) -> Self {
-        Self {
-            default_count,
-            default_power,
-        }
-    }
+    config: RollerConfig,
 }
 
 #[derive(Debug, Error)]
@@ -40,11 +27,12 @@ impl Visitor<Result<i32, FastRollerError>> for FastRoller {
     ) -> Result<i32, FastRollerError> {
         use FastRollerError::*;
 
-        let (sign, count) = count
-            .unwrap_or(Ok(self.default_count as i32))
-            .map(|x| (x.signum(), x.abs()))?;
+        let count = count
+            .unwrap_or(i32::try_from(self.config.count()).map_err(|_| FastRollerError::Overflow));
+        let power = power
+            .unwrap_or(i32::try_from(self.config.power()).map_err(|_| FastRollerError::Overflow))?;
 
-        let power = power.unwrap_or(Ok(self.default_power as i32))?;
+        let (sign, count) = count.map(|x| (x.signum(), x.abs()))?;
 
         if count == 0 || power == 0 {
             return Ok(0);
