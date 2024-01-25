@@ -1,0 +1,8 @@
+[package]
+name = "dicemind-cli"
+version = "0.0.0"
+default-run = "dicemind-cli"
+edition = "2021"
+
+[dependencies]
+dicemind = { path = "../dicemind" }
