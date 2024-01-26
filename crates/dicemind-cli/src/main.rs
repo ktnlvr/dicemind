@@ -1,4 +1,3 @@
-use clap::{arg, value_parser, ArgAction, Command};
 use dicemind::{parser::Expression, prelude::*};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
@@ -6,6 +5,9 @@ use std::{
     io::{stdin, stdout, Result as IOResult, Write},
 };
 use textplots::{Chart, Plot, Shape};
+
+mod command;
+use command::*;
 
 fn repl(action: impl Fn(Expression) -> IOResult<()>) -> IOResult<()> {
     loop {
@@ -90,38 +92,7 @@ fn sim(
 }
 
 pub fn main() -> IOResult<()> {
-    let m = Command::new("dicemind")
-        .subcommand(
-            Command::new("simulate")
-                .short_flag('s')
-                .long_flag("sim")
-                .arg(
-                    arg!(-i - -iters)
-                        .value_parser(value_parser!(u64))
-                        .action(ArgAction::Set)
-                        .num_args(1),
-                )
-                .arg(
-                    arg!(-t - -trials)
-                        .value_parser(value_parser!(u8))
-                        .action(ArgAction::Set)
-                        .num_args(1),
-                )
-                .arg(
-                    arg!(-W - -width)
-                        .value_parser(value_parser!(u32))
-                        .action(ArgAction::Set)
-                        .num_args(1),
-                )
-                .arg(
-                    arg!(-H - -height)
-                        .value_parser(value_parser!(u32))
-                        .action(ArgAction::Set)
-                        .num_args(1),
-                ),
-        )
-        .arg_required_else_help(true)
-        .get_matches();
+    let m = command().get_matches();
 
     match m.subcommand() {
         None => repl(roll)?,
@@ -129,10 +100,10 @@ pub fn main() -> IOResult<()> {
             let iters = c.get_one::<u64>("iters").cloned().unwrap_or(10000);
             let trials = c.get_one::<u8>("trials").cloned().unwrap_or(1);
 
-            let h = c.get_one::<u32>("height").cloned().unwrap_or(40);
-            let w = c.get_one::<u32>("width").cloned().unwrap_or(120);
+            let height = c.get_one::<u32>("height").cloned().unwrap_or(40);
+            let width = c.get_one::<u32>("width").cloned().unwrap_or(120);
 
-            repl(sim(iters, trials, h, w))?;
+            repl(sim(iters, trials, height, width))?;
         }
         _ => {}
     }
