@@ -5,7 +5,8 @@ edition = "2021"
 
 [dependencies]
 memoize = "0.4.2"
-num = { verion = "0.4.1", features = ["rand"] }
+num = { verion = "0.4.1", features = ["rand", "serde"] }
 rand = "0.8.5"
-smallvec = "1.13.1"
+serde = { version = "1.0.195", features = ["derive"] }
+smallvec = { version = "1.13.1", features = ["serde"] }
 thiserror = "1.0.56"

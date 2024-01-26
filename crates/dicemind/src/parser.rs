@@ -1,13 +1,14 @@
 use std::cmp::Ordering;
 
 use num::Zero;
+use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use thiserror::Error;
 
 pub type Integer = num::bigint::BigInt;
 pub type PositiveInteger = num::bigint::BigUint;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Clone, Copy, Hash)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Clone, Copy, Hash, Serialize, Deserialize)]
 pub enum BinaryOperator {
     Equals,
     LessThan,
@@ -38,7 +39,7 @@ impl Ord for BinaryOperator {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Expression {
     Dice {
         count: Option<Box<Expression>>,
@@ -55,17 +56,26 @@ pub enum Expression {
     UnaryNegation(Box<Expression>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash, Copy, Deserialize)]
 pub enum DependentAugmentKind {
     Drop,
     Keep,
     Reroll,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize)]
+#[serde(remote = "Ordering")]
+enum SerdeOrdering {
+    Less = -1,
+    Equal = 0,
+    Greater = 1,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash, Deserialize)]
 pub enum Augmentation {
     Dependent {
         kind: DependentAugmentKind,
+        #[serde(with = "SerdeOrdering")]
         relation: Ordering,
         n: Option<PositiveInteger>,
     },
@@ -77,7 +87,7 @@ pub enum Augmentation {
     },
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Clone, Serialize, Copy, Hash, PartialEq, Eq)]
 pub enum ParsingError {
     #[error("The string did not contain any expressions")]
     EmptyExpression,
@@ -93,9 +103,7 @@ pub enum ParsingError {
     MissingOperator,
 }
 
-fn parse_augments(
-    mut chars: &[char],
-) -> Option<(impl Iterator<Item = Augmentation>, &[char])> {
+fn parse_augments(mut chars: &[char]) -> Option<(impl Iterator<Item = Augmentation>, &[char])> {
     let mut out: Vec<Augmentation> = vec![];
     while !chars.is_empty() {
         if chars[0] == 'e' {
