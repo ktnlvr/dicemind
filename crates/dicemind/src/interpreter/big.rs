@@ -57,8 +57,8 @@ fn nth(count: PositiveInteger, power: PositiveInteger, nth: PositiveInteger) -> 
 
 // FIXMEEEEE
 fn ziggurat(count: PositiveInteger, power: PositiveInteger) -> PositiveInteger {
-    let lb: PositiveInteger = count.clone().into();
-    let rb: PositiveInteger = (count.clone() * power.clone() + PositiveInteger::one()).into();
+    let lb: PositiveInteger = count.clone();
+    let rb: PositiveInteger = count.clone() * power.clone() + PositiveInteger::one();
     let max = max_convolved(count.clone(), power.clone());
 
     let mut rng = thread_rng();
@@ -85,7 +85,7 @@ impl Visitor<Integer> for BigRoller {
         &mut self,
         count: Option<Integer>,
         power: Option<Integer>,
-        augments: SmallVec<[Augmentation; 1]>,
+        _augments: SmallVec<[Augmentation; 1]>,
     ) -> Integer {
         let (s1, count) = count
             .map(|x| x.into_parts())
@@ -103,9 +103,9 @@ impl Visitor<Integer> for BigRoller {
 
     fn visit_binop(
         &mut self,
-        op: crate::parser::BinaryOperator,
-        lhs: Integer,
-        rhs: Integer,
+        _op: crate::parser::BinaryOperator,
+        _lhs: Integer,
+        _rhs: Integer,
     ) -> Integer {
         todo!()
     }

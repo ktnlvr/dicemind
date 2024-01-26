@@ -49,7 +49,7 @@ impl Visitor<Result<i32, FastRollerError>> for FastRoller {
         let mut rng = thread_rng();
         let mut sum = 0i32;
 
-        if augments.len() == 0 {
+        if augments.is_empty() {
             for _ in 0..count {
                 let n = rng.gen_range(1..=power);
                 sum = sum
@@ -60,7 +60,7 @@ impl Visitor<Result<i32, FastRollerError>> for FastRoller {
             todo!()
         }
 
-        Ok(sum.checked_mul(sign).ok_or(Overflow)?)
+        sum.checked_mul(sign).ok_or(Overflow)
     }
 
     fn visit_constant(&mut self, c: Integer) -> Result<i32, FastRollerError> {
@@ -91,7 +91,6 @@ impl Visitor<Result<i32, FastRollerError>> for FastRoller {
         value: Result<i32, FastRollerError>,
     ) -> Result<i32, FastRollerError> {
         value
-            .map(|n| n.checked_mul(-1).ok_or(FastRollerError::Overflow))
-            .flatten()
+            .and_then(|n| n.checked_mul(-1).ok_or(FastRollerError::Overflow))
     }
 }

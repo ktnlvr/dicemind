@@ -17,11 +17,11 @@ pub enum BinaryOperator {
     Multiply,
 }
 
-impl Into<u8> for BinaryOperator {
-    fn into(self) -> u8 {
+impl From<BinaryOperator> for u8 {
+    fn from(val: BinaryOperator) -> Self {
         use BinaryOperator::*;
 
-        match self {
+        match val {
             Equals | LessThan | GreaterThan => 3,
             Multiply => 2,
             Add | Subtract => 1,
@@ -31,8 +31,8 @@ impl Into<u8> for BinaryOperator {
 
 impl Ord for BinaryOperator {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        let l: u8 = self.clone().into();
-        let r: u8 = other.clone().into();
+        let l: u8 = (*self).into();
+        let r: u8 = (*other).into();
 
         l.cmp(&r)
     }
@@ -93,11 +93,11 @@ pub enum ParsingError {
     MissingOperator,
 }
 
-fn parse_augments<'a>(
-    mut chars: &'a [char],
-) -> Option<(impl Iterator<Item = Augmentation>, &'a [char])> {
+fn parse_augments(
+    mut chars: &[char],
+) -> Option<(impl Iterator<Item = Augmentation>, &[char])> {
     let mut out: Vec<Augmentation> = vec![];
-    while chars.len() > 0 {
+    while !chars.is_empty() {
         if chars[0] == 'e' {
             let e = if let Some((n, rest)) = parse_number(&chars[1..]) {
                 chars = rest;
@@ -123,19 +123,19 @@ fn parse_augments<'a>(
         }
     }
 
-    if out.len() > 0 {
+    if !out.is_empty() {
         Some((out.into_iter(), chars))
     } else {
         None
     }
 }
 
-fn parse_number<'a>(chars: &'a [char]) -> Option<(PositiveInteger, &'a [char])> {
-    if chars.len() == 0 {
+fn parse_number(chars: &[char]) -> Option<(PositiveInteger, &[char])> {
+    if chars.is_empty() {
         return None;
     }
 
-    if !chars[0].is_digit(10) {
+    if !chars[0].is_ascii_digit() {
         return None;
     }
 
@@ -160,7 +160,7 @@ fn parse_dice(mut chars: &[char]) -> Result<Option<(Expression, &[char])>, Parsi
         Box::new(count)
     });
 
-    if chars.len() == 0 {
+    if chars.is_empty() {
         return Ok(None);
     }
 
@@ -230,7 +230,7 @@ pub fn parse(input: &str) -> Result<Expression, ParsingError> {
 }
 
 pub fn parse_subexpr(chars: &[char]) -> Result<Option<(Expression, &[char])>, ParsingError> {
-    if chars.len() == 0 {
+    if chars.is_empty() {
         return Ok(None);
     }
 
@@ -257,7 +257,7 @@ pub fn parse_subexpr(chars: &[char]) -> Result<Option<(Expression, &[char])>, Pa
         i += 1;
     }
 
-    return Err(ParsingError::UnbalancedLeftParen);
+    Err(ParsingError::UnbalancedLeftParen)
 }
 
 pub fn parse_term(chars: &[char]) -> Result<Option<(Expression, &[char])>, ParsingError> {
@@ -284,18 +284,18 @@ fn _parse(mut chars: &[char]) -> Result<Expression, ParsingError> {
     let mut expressions: Vec<Expression> = vec![];
     let mut operators: Vec<BinaryOperator> = vec![];
 
-    while chars.len() != 0 {
+    while !chars.is_empty() {
         while chars[0].is_whitespace() {
             chars = &chars[1..];
         }
 
-        if chars.len() == 0 {
+        if chars.is_empty() {
             break;
         }
 
         // TODO: clean this up?
         let id = |expr: Expression| expr;
-        let unary_wrapper = if expressions.len() == 0 && operators.len() == 0 {
+        let unary_wrapper = if expressions.is_empty() && operators.is_empty() {
             match chars[0] {
                 '-' => {
                     chars = &chars[1..];
@@ -318,7 +318,7 @@ fn _parse(mut chars: &[char]) -> Result<Expression, ParsingError> {
             return Err(ParsingError::UndefinedSymbol { char: chars[0] });
         }
 
-        if chars.len() == 0 {
+        if chars.is_empty() {
             break;
         }
 
