@@ -1,0 +1,15 @@
+[package]
+name = "dicemind-web"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+dicemind = { path = "../dicemind" }
+console_log = "1.0.0"
+log = "0.4.20"
+wasm-bindgen = "0.2.90"
+web-sys = "0.3.67"
+yew = { git = "https://github.com/yewstack/yew/", features = ["csr"] }
+
+[profile.dev.package."*"]
+opt-level = "z"

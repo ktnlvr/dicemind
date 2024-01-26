@@ -19,8 +19,8 @@ pub fn main() -> IOResult<()> {
 
         match parse(&buf) {
             Ok(expr) => {
-                match fast_roller.roll(expr) {
-                    Ok(res) => println!("ok. {res}"),
+                match fast_roller.roll(expr.clone()) {
+                    Ok(res) => { dbg!(&expr); println!("ok. {res}") },
                     Err(err) => println!("err. {err}"),
                 }
             }
