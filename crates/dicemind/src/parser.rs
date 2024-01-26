@@ -205,13 +205,15 @@ fn parse_dice(mut chars: &[char]) -> Result<Option<(Expression, &[char])>, Parsi
 }
 
 fn parse_operator(char: char) -> Option<BinaryOperator> {
+    use BinaryOperator::*;
+
     match char {
-        '+' => Some(BinaryOperator::Add),
-        '-' => Some(BinaryOperator::Subtract),
-        '*' => Some(BinaryOperator::Multiply),
-        '>' => Some(BinaryOperator::GreaterThan),
-        '<' => Some(BinaryOperator::LessThan),
-        '=' => Some(BinaryOperator::Equals),
+        '+' => Some(Add),
+        '-' => Some(Subtract),
+        '*' => Some(Multiply),
+        '>' => Some(GreaterThan),
+        '<' => Some(LessThan),
+        '=' => Some(Equals),
         _ => None,
     }
 }
