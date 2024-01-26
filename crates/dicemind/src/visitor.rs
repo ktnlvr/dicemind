@@ -1,4 +1,6 @@
-use crate::parser::{BinaryOperator, Expression, Integer};
+use smallvec::SmallVec;
+
+use crate::parser::{Augmentation, BinaryOperator, Expression, Integer};
 
 pub trait Visitor<T> {
     fn visit(&mut self, expr: Expression) -> T {
@@ -8,12 +10,12 @@ pub trait Visitor<T> {
             Dice {
                 count,
                 power,
-                augmentations: _,
+                augmentations,
             } => {
                 let count = count.map(|b| self.visit(*b));
                 let power = power.map(|b| self.visit(*b));
 
-                self.visit_dice(count, power)
+                self.visit_dice(count, power, augmentations)
             }
             Binop { operator, lhs, rhs } => {
                 let lhs = self.visit(*lhs);
@@ -33,7 +35,12 @@ pub trait Visitor<T> {
 
     fn visit_negation(&mut self, value: T) -> T;
 
-    fn visit_dice(&mut self, count: Option<T>, power: Option<T>) -> T;
+    fn visit_dice(
+        &mut self,
+        count: Option<T>,
+        power: Option<T>,
+        augments: SmallVec<[Augmentation; 1]>,
+    ) -> T;
 
     fn visit_constant(&mut self, c: Integer) -> T;
 

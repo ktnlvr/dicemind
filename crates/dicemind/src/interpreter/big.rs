@@ -1,5 +1,5 @@
 use crate::{
-    parser::{Integer, PositiveInteger},
+    parser::{Augmentation, Integer, PositiveInteger},
     visitor::Visitor,
 };
 use memoize::memoize;
@@ -8,6 +8,7 @@ use num::{
     One, ToPrimitive, Zero,
 };
 use rand::thread_rng;
+use smallvec::SmallVec;
 
 use super::RollerConfig;
 
@@ -80,7 +81,12 @@ impl Visitor<Integer> for BigRoller {
         -value
     }
 
-    fn visit_dice(&mut self, count: Option<Integer>, power: Option<Integer>) -> Integer {
+    fn visit_dice(
+        &mut self,
+        count: Option<Integer>,
+        power: Option<Integer>,
+        augments: SmallVec<[Augmentation; 1]>,
+    ) -> Integer {
         let (s1, count) = count
             .map(|x| x.into_parts())
             .unwrap_or((Sign::Plus, self.config.count()));

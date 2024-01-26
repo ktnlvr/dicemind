@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use num::Zero;
-use smallvec::{smallvec, SmallVec};
+use smallvec::SmallVec;
 use thiserror::Error;
 
 pub type Integer = num::bigint::BigInt;
@@ -38,7 +38,7 @@ impl Ord for BinaryOperator {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expression {
     Dice {
         count: Option<Box<Expression>>,
@@ -55,14 +55,14 @@ pub enum Expression {
     UnaryNegation(Box<Expression>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum DependentAugmentKind {
     Drop,
     Keep,
     Reroll,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Augmentation {
     Dependent {
         kind: DependentAugmentKind,
@@ -70,10 +70,10 @@ pub enum Augmentation {
         n: Option<PositiveInteger>,
     },
     Emphasis {
-        e: PositiveInteger,
+        e: Option<PositiveInteger>,
     },
     Explode {
-        n: PositiveInteger,
+        n: Option<PositiveInteger>,
     },
 }
 
@@ -91,6 +91,43 @@ pub enum ParsingError {
     NoOperands { operator: BinaryOperator },
     #[error("Missing operator between operands")]
     MissingOperator,
+}
+
+fn parse_augments<'a>(
+    mut chars: &'a [char],
+) -> Option<(impl Iterator<Item = Augmentation>, &'a [char])> {
+    let mut out: Vec<Augmentation> = vec![];
+    while chars.len() > 0 {
+        if chars[0] == 'e' {
+            let e = if let Some((n, rest)) = parse_number(&chars[1..]) {
+                chars = rest;
+                Some(n)
+            } else {
+                chars = &chars[1..];
+                None
+            };
+
+            out.push(Augmentation::Emphasis { e });
+        } else if chars[0] == '!' {
+            let n = if let Some((n, rest)) = parse_number(&chars[1..]) {
+                chars = rest;
+                Some(n)
+            } else {
+                chars = &chars[1..];
+                None
+            };
+
+            out.push(Augmentation::Explode { n });
+        } else {
+            break;
+        }
+    }
+
+    if out.len() > 0 {
+        Some((out.into_iter(), chars))
+    } else {
+        None
+    }
 }
 
 fn parse_number<'a>(chars: &'a [char]) -> Option<(PositiveInteger, &'a [char])> {
@@ -139,11 +176,18 @@ fn parse_dice(mut chars: &[char]) -> Result<Option<(Expression, &[char])>, Parsi
             None
         };
 
+        let augments: Vec<_> = if let Some((augs, rest)) = parse_augments(chars) {
+            chars = rest;
+            augs.collect()
+        } else {
+            vec![]
+        };
+
         return Ok(Some((
             Expression::Dice {
                 count,
                 power,
-                augmentations: smallvec![],
+                augmentations: augments.into_iter().collect(),
             },
             chars,
         )));

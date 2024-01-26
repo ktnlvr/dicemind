@@ -1,4 +1,5 @@
 use rand::{thread_rng, Rng};
+use smallvec::SmallVec;
 use thiserror::Error;
 
 use crate::parser::*;
@@ -30,6 +31,7 @@ impl Visitor<Result<i32, FastRollerError>> for FastRoller {
         &mut self,
         count: Option<Result<i32, FastRollerError>>,
         power: Option<Result<i32, FastRollerError>>,
+        augments: SmallVec<[Augmentation; 1]>,
     ) -> Result<i32, FastRollerError> {
         use FastRollerError::*;
 
@@ -47,12 +49,15 @@ impl Visitor<Result<i32, FastRollerError>> for FastRoller {
         let mut rng = thread_rng();
         let mut sum = 0i32;
 
-        for _ in 0..count {
-            let n = rng.gen_range(1..=power);
-
-            sum = sum
-                .checked_add(n.try_into().map_err(|_| ValueTooLarge)?)
-                .ok_or(Overflow)?;
+        if augments.len() == 0 {
+            for _ in 0..count {
+                let n = rng.gen_range(1..=power);
+                sum = sum
+                    .checked_add(n.try_into().map_err(|_| ValueTooLarge)?)
+                    .ok_or(Overflow)?;
+            }
+        } else {
+            todo!()
         }
 
         Ok(sum.checked_mul(sign).ok_or(Overflow)?)
