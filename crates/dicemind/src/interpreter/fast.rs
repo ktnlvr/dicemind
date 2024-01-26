@@ -1,4 +1,4 @@
-use rand::{thread_rng, Rng};
+use rand::{rngs::StdRng, Rng, SeedableRng};
 use smallvec::SmallVec;
 use thiserror::Error;
 
@@ -7,9 +7,12 @@ use crate::visitor::Visitor;
 
 use super::RollerConfig;
 
-#[derive(Debug, Default)]
-pub struct FastRoller {
+pub type StandardFastRoller = FastRoller<StdRng>;
+
+#[derive(Debug, Clone)]
+pub struct FastRoller<R: Rng = StdRng> {
     config: RollerConfig,
+    rng: R,
 }
 
 #[derive(Debug, Error)]
@@ -20,13 +23,31 @@ pub enum FastRollerError {
     Overflow,
 }
 
-impl FastRoller {
+impl<R: Rng> FastRoller<R> {
     pub fn roll(&mut self, expr: Expression) -> Result<i32, FastRollerError> {
         self.visit(expr)
     }
 }
 
-impl Visitor<Result<i32, FastRollerError>> for FastRoller {
+impl<R: SeedableRng + Rng> FastRoller<R> {
+    pub fn new_seeded(seed: u64) -> Self {
+        Self {
+            config: Default::default(),
+            rng: R::seed_from_u64(seed),
+        }
+    }
+}
+
+impl<R: SeedableRng + Rng> Default for FastRoller<R> {
+    fn default() -> Self {
+        Self {
+            config: Default::default(),
+            rng: R::from_entropy(),
+        }
+    }
+}
+
+impl<R: Rng> Visitor<Result<i32, FastRollerError>> for FastRoller<R> {
     fn visit_dice(
         &mut self,
         count: Option<Result<i32, FastRollerError>>,
@@ -46,12 +67,11 @@ impl Visitor<Result<i32, FastRollerError>> for FastRoller {
             return Ok(0);
         }
 
-        let mut rng = thread_rng();
         let mut sum = 0i32;
 
         if augments.is_empty() {
             for _ in 0..count {
-                let n = rng.gen_range(1..=power);
+                let n = self.rng.gen_range(1..=power);
                 sum = sum
                     .checked_add(n.try_into().map_err(|_| ValueTooLarge)?)
                     .ok_or(Overflow)?;
@@ -90,7 +110,6 @@ impl Visitor<Result<i32, FastRollerError>> for FastRoller {
         &mut self,
         value: Result<i32, FastRollerError>,
     ) -> Result<i32, FastRollerError> {
-        value
-            .and_then(|n| n.checked_mul(-1).ok_or(FastRollerError::Overflow))
+        value.and_then(|n| n.checked_mul(-1).ok_or(FastRollerError::Overflow))
     }
 }

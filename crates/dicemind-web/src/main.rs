@@ -8,12 +8,12 @@ use yew::prelude::*;
 fn App() -> Html {
     let output = use_state(String::default);
     let output_value = (*output).clone();
-    
+
     let on_change = {
         let output = output.clone();
-        
+
         Callback::from(move |e: Event| {
-            let mut roller = FastRoller::default();
+            let mut roller = StandardFastRoller::default();
             let target = e.target();
             let input = target.and_then(|t| t.dyn_into::<HtmlInputElement>().ok());
 

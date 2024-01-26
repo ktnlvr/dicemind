@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::parser::PositiveInteger;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct RollerConfig {
     default_count: PositiveInteger,
     default_power: PositiveInteger,

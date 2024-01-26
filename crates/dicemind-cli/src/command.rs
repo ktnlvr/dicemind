@@ -2,6 +2,12 @@ use clap::{arg, value_parser, ArgAction, Command};
 
 pub fn command() -> Command {
     Command::new("dicemind")
+        .arg(
+            arg!(--seed)
+                .value_parser(value_parser!(u64))
+                .num_args(1)
+                .action(ArgAction::Set),
+        )
         .subcommand(
             Command::new("simulate")
                 .short_flag('s')
@@ -9,13 +15,11 @@ pub fn command() -> Command {
                 .arg(
                     arg!(-i - -iters)
                         .value_parser(value_parser!(u64))
-                        .action(ArgAction::Set)
                         .num_args(1),
                 )
                 .arg(
                     arg!(-t - -trials)
                         .value_parser(value_parser!(u8))
-                        .action(ArgAction::Set)
                         .num_args(1),
                 )
                 .arg(
@@ -31,5 +35,4 @@ pub fn command() -> Command {
                         .num_args(1),
                 ),
         )
-        .arg_required_else_help(true)
 }

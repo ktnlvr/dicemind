@@ -7,7 +7,7 @@ pub mod parser;
 mod visitor;
 
 pub mod prelude {
-    pub use crate::interpreter::FastRoller;
+    pub use crate::interpreter::StandardFastRoller;
     pub use crate::parser::parse;
     pub use crate::visitor::Visitor;
 }

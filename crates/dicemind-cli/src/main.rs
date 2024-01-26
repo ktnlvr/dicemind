@@ -7,9 +7,23 @@ use std::{
 use textplots::{Chart, Plot, Shape};
 
 mod command;
-use command::*;
+mod options;
 
-fn repl(action: impl Fn(Expression) -> IOResult<()>) -> IOResult<()> {
+use command::*;
+use options::*;
+
+fn roller_from_opts(opts: CliOptions) -> StandardFastRoller {
+    if let Some(seed) = opts.seed {
+        StandardFastRoller::new_seeded(seed)
+    } else {
+        StandardFastRoller::default()
+    }
+}
+
+fn repl(
+    action: impl Fn(Expression, CliOptions) -> IOResult<()>,
+    options: CliOptions,
+) -> IOResult<()> {
     loop {
         print!("dice? ");
         stdout().flush()?;
@@ -23,7 +37,7 @@ fn repl(action: impl Fn(Expression) -> IOResult<()>) -> IOResult<()> {
         }
 
         match parse(&buf) {
-            Ok(expr) => action(expr)?,
+            Ok(expr) => action(expr, options.clone())?,
             Err(err) => println!("err. {err}"),
         }
     }
@@ -31,8 +45,8 @@ fn repl(action: impl Fn(Expression) -> IOResult<()>) -> IOResult<()> {
     Ok(())
 }
 
-fn roll(expr: Expression) -> IOResult<()> {
-    let mut fast_roller = FastRoller::default();
+fn roll(expr: Expression, opts: CliOptions) -> IOResult<()> {
+    let mut fast_roller = roller_from_opts(opts);
 
     match fast_roller.roll(expr.clone()) {
         Ok(res) => {
@@ -50,13 +64,13 @@ fn sim(
     trials: u8,
     height: u32,
     width: u32,
-) -> Box<dyn Fn(Expression) -> IOResult<()>> {
-    Box::new(move |expr: Expression| {
+) -> Box<dyn Fn(Expression, CliOptions) -> IOResult<()>> {
+    Box::new(move |expr: Expression, opts: CliOptions| {
         let tables: Vec<(Vec<_>, _, _)> = (0..trials)
             .into_par_iter()
             .map(|_| {
                 let mut values: HashMap<i32, u64> = HashMap::new();
-                let mut fast_roller = FastRoller::default();
+                let mut fast_roller = roller_from_opts(opts);
 
                 for _ in 0..iterations {
                     let n = fast_roller.roll(expr.clone()).unwrap();
@@ -94,8 +108,11 @@ fn sim(
 pub fn main() -> IOResult<()> {
     let m = command().get_matches();
 
+    let seed = m.get_one("seed").cloned();
+    let options = CliOptions { seed };
+
     match m.subcommand() {
-        None => repl(roll)?,
+        None => repl(roll, options)?,
         Some(("simulate", c)) => {
             let iters = c.get_one::<u64>("iters").cloned().unwrap_or(10000);
             let trials = c.get_one::<u8>("trials").cloned().unwrap_or(1);
@@ -103,7 +120,7 @@ pub fn main() -> IOResult<()> {
             let height = c.get_one::<u32>("height").cloned().unwrap_or(40);
             let width = c.get_one::<u32>("width").cloned().unwrap_or(120);
 
-            repl(sim(iters, trials, height, width))?;
+            repl(sim(iters, trials, height, width), options)?;
         }
         _ => {}
     }
