@@ -15,24 +15,28 @@ pub fn command() -> Command {
                 .arg(
                     arg!(-i - -iters)
                         .value_parser(value_parser!(u64))
-                        .num_args(1),
+                        .num_args(1)
+                        .action(ArgAction::Set),
                 )
                 .arg(
                     arg!(-t - -trials)
                         .value_parser(value_parser!(u8))
-                        .num_args(1),
+                        .num_args(1)
+                        .action(ArgAction::Set),
                 )
                 .arg(
                     arg!(-W - -width)
                         .value_parser(value_parser!(u32))
                         .action(ArgAction::Set)
-                        .num_args(1),
+                        .num_args(1)
+                        .action(ArgAction::Set),
                 )
                 .arg(
                     arg!(-H - -height)
                         .value_parser(value_parser!(u32))
                         .action(ArgAction::Set)
-                        .num_args(1),
+                        .num_args(1)
+                        .action(ArgAction::Set),
                 ),
         )
 }
