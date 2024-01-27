@@ -69,14 +69,21 @@ fn sim(
         let tables: Vec<(Vec<_>, _, _)> = (0..trials)
             .into_par_iter()
             .map(|_| {
-                let mut values: HashMap<i32, u64> = HashMap::new();
-                let mut fast_roller = roller_from_opts(opts);
-
-                for _ in 0..iterations {
-                    let n = fast_roller.roll(expr.clone()).unwrap();
-                    let value = values.entry(n).or_insert_with(|| 0);
-                    *value += 1;
-                }
+                let values = (0..iterations)
+                    .into_par_iter()
+                    .map(|_| roller_from_opts(opts).roll(expr.clone()).unwrap())
+                    .fold_with(HashMap::new(), |mut values, n| {
+                        *values.entry(n).or_insert_with(|| 0) += 1;
+                        values
+                    })
+                    .reduce_with(|mut a, b| {
+                        for (k, u) in b.into_iter() {
+                            let v = a.entry(k).or_insert_with(|| 0);
+                            *v += u;
+                        }
+                        a
+                    })
+                    .unwrap_or_default();
 
                 let mut values: Vec<_> = values.into_iter().collect();
                 values.sort_unstable_by_key(|(a, _)| *a);
