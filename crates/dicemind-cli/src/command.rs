@@ -4,6 +4,7 @@ pub fn command() -> Command {
     Command::new("dicemind")
         .arg(
             arg!([EXPRS] ... "Expressions to evaluate")
+                .id("exprs")
                 .value_parser(value_parser!(String))
                 .action(ArgAction::Append),
         )

@@ -3,10 +3,7 @@
 use defaults::{DEFAULT_HEIGHT, DEFAULT_ITERS, DEFAULT_TRIALS, DEFAULT_WIDTH};
 use dicemind::{parser::Expression, prelude::*};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use std::{
-    collections::HashMap,
-    io::{stdin, stdout, Result as IOResult, Write},
-};
+use std::{collections::HashMap, io::Result as IOResult};
 use textplots::{Chart, Plot, Shape};
 
 mod command;
@@ -15,29 +12,6 @@ mod options;
 
 use command::*;
 use options::*;
-
-fn stdin_input() -> impl Iterator<Item = IOResult<String>> {
-    std::iter::from_coroutine(|| loop {
-        print!("dice? ");
-        if let Err(err) = stdout().flush() {
-            yield Err(err);
-            return;
-        };
-
-        let mut buf = String::new();
-        if let Err(err) = stdin().read_line(&mut buf) {
-            yield Err(err);
-            return;
-        };
-
-        buf = buf.trim().to_string();
-        if buf.is_empty() {
-            return;
-        }
-
-        yield Ok(buf);
-    })
-}
 
 fn roller_from_opts(opts: CliOptions) -> StandardFastRoller {
     if let Some(seed) = opts.seed {
@@ -54,7 +28,7 @@ fn repl(
 ) -> IOResult<()> {
     for input in inputs {
         match parse(&input?) {
-            Ok(expr) => action(expr, options.clone())?,
+            Ok(expr) => action(expr, options)?,
             Err(err) => println!("err. {err}"),
         }
     }
@@ -132,25 +106,8 @@ fn sim(
 pub fn main() -> IOResult<()> {
     let m = command().get_matches();
 
-    let seed = m.get_one("seed").cloned();
-    let options = CliOptions { seed };
-    let exprs: Option<Vec<_>> = m
-        .get_many::<String>("EXPRS")
-        .map(|iter| iter.cloned().collect::<Vec<_>>());
-
-    let inputs: Box<dyn Iterator<Item = Result<String, std::io::Error>>> =
-        if let Some(exprs) = exprs {
-            Box::new(
-                exprs
-                    .into_iter()
-                    .map(|s| -> Result<String, std::io::Error> {
-                        println!("dice? {}", s);
-                        Ok(s)
-                    }),
-            )
-        } else {
-            Box::new(stdin_input())
-        };
+    let options = options_from_args(&m);
+    let inputs = input_method_from_args(&m);
 
     match m.subcommand() {
         None => repl(inputs, roll, options)?,
