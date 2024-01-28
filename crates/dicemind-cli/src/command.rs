@@ -3,6 +3,11 @@ use clap::{arg, value_parser, ArgAction, Command};
 pub fn command() -> Command {
     Command::new("dicemind")
         .arg(
+            arg!([EXPRS] ... "Expressions to evaluate")
+                .value_parser(value_parser!(String))
+                .action(ArgAction::Append),
+        )
+        .arg(
             arg!(--seed)
                 .value_parser(value_parser!(u64))
                 .num_args(1)

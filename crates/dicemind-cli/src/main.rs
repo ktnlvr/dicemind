@@ -1,3 +1,6 @@
+#![feature(coroutines, coroutine_trait, iter_from_coroutine)]
+
+use defaults::{DEFAULT_HEIGHT, DEFAULT_ITERS, DEFAULT_TRIALS, DEFAULT_WIDTH};
 use dicemind::{parser::Expression, prelude::*};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
@@ -7,10 +10,34 @@ use std::{
 use textplots::{Chart, Plot, Shape};
 
 mod command;
+mod defaults;
 mod options;
 
 use command::*;
 use options::*;
+
+fn stdin_input() -> impl Iterator<Item = IOResult<String>> {
+    std::iter::from_coroutine(|| loop {
+        print!("dice? ");
+        if let Err(err) = stdout().flush() {
+            yield Err(err);
+            return;
+        };
+
+        let mut buf = String::new();
+        if let Err(err) = stdin().read_line(&mut buf) {
+            yield Err(err);
+            return;
+        };
+
+        buf = buf.trim().to_string();
+        if buf.is_empty() {
+            return;
+        }
+
+        yield Ok(buf);
+    })
+}
 
 fn roller_from_opts(opts: CliOptions) -> StandardFastRoller {
     if let Some(seed) = opts.seed {
@@ -21,22 +48,12 @@ fn roller_from_opts(opts: CliOptions) -> StandardFastRoller {
 }
 
 fn repl(
+    inputs: impl Iterator<Item = IOResult<String>>,
     action: impl Fn(Expression, CliOptions) -> IOResult<()>,
     options: CliOptions,
 ) -> IOResult<()> {
-    loop {
-        print!("dice? ");
-        stdout().flush()?;
-
-        let mut buf = String::new();
-        stdin().read_line(&mut buf)?;
-        buf = buf.trim().to_string();
-
-        if buf.is_empty() {
-            break;
-        }
-
-        match parse(&buf) {
+    for input in inputs {
+        match parse(&input?) {
             Ok(expr) => action(expr, options.clone())?,
             Err(err) => println!("err. {err}"),
         }
@@ -117,17 +134,37 @@ pub fn main() -> IOResult<()> {
 
     let seed = m.get_one("seed").cloned();
     let options = CliOptions { seed };
+    let exprs: Option<Vec<_>> = m
+        .get_many::<String>("EXPRS")
+        .map(|iter| iter.cloned().collect::<Vec<_>>());
+
+    let inputs: Box<dyn Iterator<Item = Result<String, std::io::Error>>> =
+        if let Some(exprs) = exprs {
+            Box::new(
+                exprs
+                    .into_iter()
+                    .map(|s| -> Result<String, std::io::Error> {
+                        println!("dice? {}", s);
+                        Ok(s)
+                    }),
+            )
+        } else {
+            Box::new(stdin_input())
+        };
 
     match m.subcommand() {
-        None => repl(roll, options)?,
+        None => repl(inputs, roll, options)?,
         Some(("simulate", c)) => {
-            let iters = c.get_one::<u64>("iters").cloned().unwrap_or(10000);
-            let trials = c.get_one::<u8>("trials").cloned().unwrap_or(1);
+            let iters = c.get_one::<u64>("iters").cloned().unwrap_or(DEFAULT_ITERS);
+            let trials = c.get_one::<u8>("trials").cloned().unwrap_or(DEFAULT_TRIALS);
 
-            let height = c.get_one::<u32>("height").cloned().unwrap_or(40);
-            let width = c.get_one::<u32>("width").cloned().unwrap_or(120);
+            let height = c
+                .get_one::<u32>("height")
+                .cloned()
+                .unwrap_or(DEFAULT_HEIGHT);
+            let width = c.get_one::<u32>("width").cloned().unwrap_or(DEFAULT_WIDTH);
 
-            repl(sim(iters, trials, height, width), options)?;
+            repl(inputs, sim(iters, trials, height, width), options)?;
         }
         _ => {}
     }
