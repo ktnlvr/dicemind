@@ -2,6 +2,7 @@ use rand::{rngs::StdRng, Rng, SeedableRng};
 use smallvec::SmallVec;
 use thiserror::Error;
 
+use crate::interpreter::verbose_roll;
 use crate::parser::*;
 use crate::visitor::Visitor;
 
@@ -59,9 +60,10 @@ impl<R: Rng> Visitor<Result<i32, FastRollerError>> for FastRoller<R> {
         let count = count
             .unwrap_or(i32::try_from(self.config.count()).map_err(|_| FastRollerError::Overflow));
         let power = power
-            .unwrap_or(i32::try_from(self.config.power()).map_err(|_| FastRollerError::Overflow))?;
+            .unwrap_or(i32::try_from(self.config.power()).map_err(|_| FastRollerError::Overflow));
 
-        let (sign, count) = count.map(|x| (x.signum(), x.abs()))?;
+        let (sign_1, count) = count.map(|x| (x.signum(), x.abs() as u32))?;
+        let (sign_2, power) = power.map(|x| (x.signum(), x.abs() as u32))?;
 
         if count == 0 || power == 0 {
             return Ok(0);
@@ -77,10 +79,14 @@ impl<R: Rng> Visitor<Result<i32, FastRollerError>> for FastRoller<R> {
                     .ok_or(Overflow)?;
             }
         } else {
-            todo!()
+            // Fallback to using verbose rolling
+            sum = verbose_roll(&mut self.rng, count, power, augments)?
+                .into_iter()
+                .map(|roll| roll.collapse())
+                .sum();
         }
 
-        sum.checked_mul(sign).ok_or(Overflow)
+        sum.checked_mul(sign_1 * sign_2).ok_or(Overflow)
     }
 
     fn visit_constant(&mut self, c: Integer) -> Result<i32, FastRollerError> {

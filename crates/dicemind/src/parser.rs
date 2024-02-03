@@ -57,7 +57,7 @@ pub enum Expression {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash, Copy, Deserialize)]
-pub enum DependentAugmentKind {
+pub enum AugmentKind {
     Drop,
     Keep,
     Reroll,
@@ -72,18 +72,40 @@ enum SerdeOrdering {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash, Deserialize)]
+pub enum Affix {
+    Suffix,
+    Postfix,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash, Deserialize)]
+pub struct Selector {
+    #[serde(with = "SerdeOrdering")]
+    pub relation: Ordering,
+    pub n: PositiveInteger,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash, Deserialize)]
 pub enum Augmentation {
-    Dependent {
-        kind: DependentAugmentKind,
-        #[serde(with = "SerdeOrdering")]
-        relation: Ordering,
-        n: Option<PositiveInteger>,
+    // kh4 kl2
+    Truncate {
+        kind: AugmentKind,
+        affix: Affix,
+        n: PositiveInteger,
     },
+    // d<2 k=3
+    Filter {
+        kind: AugmentKind,
+        selector: Selector,
+    },
+    // e
     Emphasis {
         e: Option<PositiveInteger>,
     },
+    // !
+    // TODO: allow exploding n-times on different values
     Explode {
-        n: Option<PositiveInteger>,
+        // On what values to explode
+        n: Option<Selector>,
     },
 }
 
@@ -117,15 +139,8 @@ fn parse_augments(mut chars: &[char]) -> Option<(impl Iterator<Item = Augmentati
 
             out.push(Augmentation::Emphasis { e });
         } else if chars[0] == '!' {
-            let n = if let Some((n, rest)) = parse_number(&chars[1..]) {
-                chars = rest;
-                Some(n)
-            } else {
-                chars = &chars[1..];
-                None
-            };
-
-            out.push(Augmentation::Explode { n });
+            chars = &chars[1..];
+            out.push(Augmentation::Explode { n: None });
         } else {
             break;
         }
