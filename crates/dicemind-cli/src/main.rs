@@ -2,6 +2,7 @@
 
 use defaults::{DEFAULT_HEIGHT, DEFAULT_ITERS, DEFAULT_TRIALS, DEFAULT_WIDTH};
 use dicemind::{parser::Expression, prelude::*};
+use human_panic::setup_panic;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{collections::HashMap, io::Result as IOResult};
 use textplots::{Chart, Plot, Shape};
@@ -103,6 +104,7 @@ fn sim(
 }
 
 pub fn main() -> IOResult<()> {
+    setup_panic!();
     let m = command().get_matches();
 
     let options = options_from_args(&m);
