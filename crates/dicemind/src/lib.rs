@@ -1,9 +1,12 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![feature(box_patterns)]
+#![feature(extract_if)]
 #![feature(result_flattening)]
+#![feature(is_sorted)]
 
 pub mod interpreter;
 pub mod parser;
+mod minmax;
 mod visitor;
 
 pub mod prelude {
