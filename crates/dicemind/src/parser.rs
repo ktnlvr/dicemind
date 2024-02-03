@@ -60,7 +60,6 @@ pub enum Expression {
 pub enum AugmentKind {
     Drop,
     Keep,
-    Reroll,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -73,8 +72,8 @@ enum SerdeOrdering {
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash, Deserialize)]
 pub enum Affix {
-    Suffix,
-    Postfix,
+    High,
+    Low,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash, Deserialize)]
@@ -90,7 +89,7 @@ pub enum Augmentation {
     Truncate {
         kind: AugmentKind,
         affix: Affix,
-        n: PositiveInteger,
+        n: Option<PositiveInteger>,
     },
     // d<2 k=3
     Filter {
@@ -99,13 +98,14 @@ pub enum Augmentation {
     },
     // e
     Emphasis {
-        e: Option<PositiveInteger>,
+        // How many dice to emphasise
+        n: Option<PositiveInteger>,
     },
     // !
     // TODO: allow exploding n-times on different values
     Explode {
         // On what values to explode
-        n: Option<Selector>,
+        selector: Option<Selector>,
     },
 }
 
@@ -125,29 +125,97 @@ pub enum ParsingError {
     MissingOperator,
 }
 
-fn parse_augments(mut chars: &[char]) -> Option<(impl Iterator<Item = Augmentation>, &[char])> {
-    let mut out: Vec<Augmentation> = vec![];
-    while !chars.is_empty() {
-        if chars[0] == 'e' {
-            let e = if let Some((n, rest)) = parse_number(&chars[1..]) {
-                chars = rest;
-                Some(n)
-            } else {
-                chars = &chars[1..];
-                None
-            };
+fn parse_augment_explode(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
+    if let '!' = chars.get(0)? {
+        chars = &chars[1..];
+        let selector = parse_selector(chars).and_then(|(selector, rest)| {
+            chars = rest;
+            Some(selector)
+        });
 
-            out.push(Augmentation::Emphasis { e });
-        } else if chars[0] == '!' {
-            chars = &chars[1..];
-            out.push(Augmentation::Explode { n: None });
+        Some((Augmentation::Explode { selector }, chars))
+    } else {
+        None
+    }
+}
+
+fn parse_augment_emphasis(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
+    if let 'e' = chars.get(0)? {
+        chars = &chars[1..];
+        let n = if let Some((n, rest)) = parse_number(&chars) {
+            chars = rest;
+            Some(n)
         } else {
-            break;
+            None
+        };
+
+        Some((Augmentation::Emphasis { n }, chars))
+    } else {
+        None
+    }
+}
+
+fn parse_truncation(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
+    let kind = match chars.get(0)? {
+        'k' => AugmentKind::Keep,
+        'd' => AugmentKind::Drop,
+        _ => return None,
+    };
+
+    let affix = match chars[1..].get(0)? {
+        'l' => Affix::Low,
+        'h' => Affix::High,
+        _ => return None,
+    };
+
+    chars = &chars[2..];
+
+    let n = parse_number(chars).and_then(|(n, rest)| {
+        chars = rest;
+        Some(n)
+    });
+
+    Some((Augmentation::Truncate { kind, affix, n }, chars))
+}
+
+pub fn parse_filter(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
+    let kind = match chars.get(0)? {
+        'k' => AugmentKind::Keep,
+        'd' => AugmentKind::Drop,
+        _ => return None,
+    };
+
+    chars = &chars[1..];
+
+    let selector = parse_selector(chars).and_then(|(n, rest)| {
+        chars = rest;
+        Some(n)
+    })?;
+
+    return Some((Augmentation::Filter { kind, selector }, chars));
+}
+
+fn parse_augments(mut chars: &[char]) -> Option<(impl Iterator<Item = Augmentation>, &[char])> {
+    let mut augments: Vec<Augmentation> = vec![];
+    let parsers = [
+        parse_augment_emphasis,
+        parse_augment_explode,
+        parse_truncation,
+        parse_filter,
+    ];
+    'outer: while !chars.is_empty() {
+        for parser in parsers {
+            if let Some((augment, rest)) = parser(chars) {
+                augments.push(augment);
+                chars = rest;
+                continue 'outer;
+            }
         }
+        break;
     }
 
-    if !out.is_empty() {
-        Some((out.into_iter(), chars))
+    if !augments.is_empty() {
+        Some((augments.into_iter(), chars))
     } else {
         None
     }
@@ -252,6 +320,23 @@ pub fn push_operator(
 pub fn parse(input: &str) -> Result<Expression, ParsingError> {
     let chars: Vec<char> = input.chars().collect();
     _parse(&chars[..])
+}
+
+pub fn parse_selector(chars: &[char]) -> Option<(Selector, &[char])> {
+    if chars.is_empty() {
+        return None;
+    }
+
+    let relation = match chars[0] {
+        '>' => Ordering::Greater,
+        '<' => Ordering::Less,
+        '=' => Ordering::Equal,
+        _ => return None,
+    };
+
+    let (n, rest) = parse_number(&chars[1..])?;
+
+    Some((Selector { relation, n }, rest))
 }
 
 pub fn parse_subexpr(chars: &[char]) -> Result<Option<(Expression, &[char])>, ParsingError> {

@@ -1,9 +1,10 @@
+use num::ToPrimitive;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     minmax::MinMax,
-    parser::{Augmentation, PositiveInteger, Selector},
+    parser::{Affix, AugmentKind, Augmentation, PositiveInteger, Selector},
 };
 
 use super::FastRollerError;
@@ -29,6 +30,67 @@ impl DiceRoll {
     }
 }
 
+pub fn apply_augments(
+    mut rolls: Vec<DiceRoll>,
+    augments: impl Iterator<Item = Augmentation>,
+) -> Result<Vec<DiceRoll>, FastRollerError> {
+    use AugmentKind::*;
+    use Augmentation::*;
+
+    for augment in augments {
+        match augment {
+            Truncate { kind, affix, n } => {
+                use Affix::*;
+
+                let n = n
+                    .map(|x| x.to_i32().ok_or(FastRollerError::ValueTooLarge))
+                    .unwrap_or(Ok(1))?;
+                let i = match rolls.binary_search_by(|x| x.value.cmp(&n)) {
+                    Ok(i) => i,
+                    Err(i) => i,
+                } + 1;
+
+                if i > rolls.len() {
+                    return Err(FastRollerError::TruncationFailure {
+                        rolled: todo!(),
+                        removed: todo!(),
+                    });
+                }
+
+                match (kind, affix) {
+                    // TODO: test this?
+                    (Drop, High) => rolls.drain(i..),
+                    (Drop, Low) => rolls.drain(..i),
+                    (Keep, High) => rolls.drain(..i),
+                    (Keep, Low) => rolls.drain(i..),
+                };
+            }
+            Filter { kind, selector } => {
+                use std::cmp::Ordering::*;
+                let Selector { relation, n } = selector;
+                let n = n.to_i32().ok_or(FastRollerError::ValueTooLarge)?;
+
+                let predicate: Box<dyn Fn(&mut DiceRoll) -> bool> = match (kind, relation) {
+                    (Drop, Less) => Box::new(|x| x.collapse() < n),
+                    (Drop, Equal) => Box::new(|x| x.collapse() == n),
+                    (Drop, Greater) => Box::new(|x| x.collapse() > n),
+                    (Keep, Less) => Box::new(|x| x.collapse() >= n),
+                    (Keep, Equal) => Box::new(|x| x.collapse() != n),
+                    (Keep, Greater) => Box::new(|x| x.collapse() <= n),
+                };
+
+                let _: Vec<_> = rolls.extract_if(predicate).collect();
+            }
+            Emphasis { n } => todo!(),
+            Explode { selector: n } => {
+                // FIXME: eergh... assumed to be applied in the previous step
+            }
+        }
+    }
+
+    Ok(rolls)
+}
+
 pub fn verbose_roll(
     roller: &mut impl Rng,
     mut count: u32,
@@ -36,7 +98,10 @@ pub fn verbose_roll(
     augments: impl IntoIterator<Item = Augmentation>,
 ) -> Result<Vec<DiceRoll>, FastRollerError> {
     use Augmentation::*;
+
+    // TODO: optimize the hell out of these
     let mut out = MinMax::<DiceRoll>::default();
+
     let augments: Vec<_> = augments.into_iter().collect();
 
     // .len() == 0  don't explode
@@ -46,7 +111,7 @@ pub fn verbose_roll(
         let explode_conditions: Vec<_> = augments
             .iter()
             .filter_map(|augment| {
-                if let Explode { n } = augment {
+                if let Explode { selector: n } = augment {
                     Some(n.as_ref())
                 } else {
                     None
@@ -91,5 +156,5 @@ pub fn verbose_roll(
         i += 1;
     }
 
-    Ok(out.into_inner())
+    apply_augments(out.into_inner(), augments.into_iter())
 }

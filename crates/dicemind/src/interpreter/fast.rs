@@ -22,6 +22,10 @@ pub enum FastRollerError {
     ValueTooLarge,
     #[error("The value has overflown, the result was too large")]
     Overflow,
+    #[error(
+        "Could not truncate dice rolls, you rolled {rolled} dice but the augments tried to remove {removed}"
+    )]
+    TruncationFailure { rolled: u32, removed: u32 },
 }
 
 impl<R: Rng> FastRoller<R> {
