@@ -41,7 +41,6 @@ fn roll(expr: Expression, opts: CliOptions) -> IOResult<()> {
 
     match fast_roller.roll(expr.clone()) {
         Ok(res) => {
-            dbg!(&expr);
             println!("ok. {res}")
         }
         Err(err) => println!("err. {err}"),
