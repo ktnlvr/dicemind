@@ -9,7 +9,7 @@ use crate::{
 
 use super::FastRollerError;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct DiceRoll {
     value: i32,
     exploded: bool,
@@ -21,6 +21,12 @@ impl Ord for DiceRoll {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         // TODO: bias towards keeping crits by imposing a suborder?
         self.value.cmp(&other.value)
+    }
+}
+
+impl PartialOrd for DiceRoll {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -81,8 +87,8 @@ pub fn apply_augments(
 
                 let _: Vec<_> = rolls.extract_if(predicate).collect();
             }
-            Emphasis { n } => todo!(),
-            Explode { selector: n } => {
+            Emphasis { n: _ } => todo!(),
+            Explode { selector: _n } => {
                 // FIXME: eergh... assumed to be applied in the previous step
             }
         }
@@ -121,7 +127,7 @@ pub fn verbose_roll(
 
         move |n: u32, power: u32| -> bool {
             let n1 = PositiveInteger::from(n);
-            return explode_conditions.len() != 0
+            return !explode_conditions.is_empty()
                 && explode_conditions.iter().any(|x| {
                     if let Some(Selector { n: n2, relation }) = x {
                         n1.cmp(n2) == *relation

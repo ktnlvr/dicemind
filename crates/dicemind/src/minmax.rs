@@ -38,7 +38,7 @@ impl<T: Ord> MinMax<T> {
     }
 
     pub fn min(&self) -> Option<&T> {
-        self.vec().get(0)
+        self.vec().first()
     }
 
     pub fn insort(&mut self, value: T) -> usize {

@@ -66,8 +66,8 @@ impl<R: Rng> Visitor<Result<i32, FastRollerError>> for FastRoller<R> {
         let power = power
             .unwrap_or(i32::try_from(self.config.power()).map_err(|_| FastRollerError::Overflow));
 
-        let (sign_1, count) = count.map(|x| (x.signum(), x.abs() as u32))?;
-        let (sign_2, power) = power.map(|x| (x.signum(), x.abs() as u32))?;
+        let (sign_1, count) = count.map(|x| (x.signum(), x.unsigned_abs()))?;
+        let (sign_2, power) = power.map(|x| (x.signum(), x.unsigned_abs()))?;
 
         if count == 0 || power == 0 {
             return Ok(0);

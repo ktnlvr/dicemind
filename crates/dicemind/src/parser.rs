@@ -8,7 +8,7 @@ use thiserror::Error;
 pub type Integer = num::bigint::BigInt;
 pub type PositiveInteger = num::bigint::BigUint;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Clone, Copy, Hash, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
 pub enum BinaryOperator {
     Equals,
     LessThan,
@@ -36,6 +36,12 @@ impl Ord for BinaryOperator {
         let r: u8 = (*other).into();
 
         l.cmp(&r)
+    }
+}
+
+impl PartialOrd for BinaryOperator {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -126,11 +132,11 @@ pub enum ParsingError {
 }
 
 fn parse_augment_explode(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
-    if let '!' = chars.get(0)? {
+    if let '!' = chars.first()? {
         chars = &chars[1..];
-        let selector = parse_selector(chars).and_then(|(selector, rest)| {
+        let selector = parse_selector(chars).map(|(selector, rest)| {
             chars = rest;
-            Some(selector)
+            selector
         });
 
         Some((Augmentation::Explode { selector }, chars))
@@ -140,9 +146,9 @@ fn parse_augment_explode(mut chars: &[char]) -> Option<(Augmentation, &[char])> 
 }
 
 fn parse_augment_emphasis(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
-    if let 'e' = chars.get(0)? {
+    if let 'e' = chars.first()? {
         chars = &chars[1..];
-        let n = if let Some((n, rest)) = parse_number(&chars) {
+        let n = if let Some((n, rest)) = parse_number(chars) {
             chars = rest;
             Some(n)
         } else {
@@ -156,13 +162,13 @@ fn parse_augment_emphasis(mut chars: &[char]) -> Option<(Augmentation, &[char])>
 }
 
 fn parse_truncation(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
-    let kind = match chars.get(0)? {
+    let kind = match chars.first()? {
         'k' => AugmentKind::Keep,
         'd' => AugmentKind::Drop,
         _ => return None,
     };
 
-    let affix = match chars[1..].get(0)? {
+    let affix = match chars[1..].first()? {
         'l' => Affix::Low,
         'h' => Affix::High,
         _ => return None,
@@ -170,16 +176,16 @@ fn parse_truncation(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
 
     chars = &chars[2..];
 
-    let n = parse_number(chars).and_then(|(n, rest)| {
+    let n = parse_number(chars).map(|(n, rest)| {
         chars = rest;
-        Some(n)
+        n
     });
 
     Some((Augmentation::Truncate { kind, affix, n }, chars))
 }
 
 pub fn parse_filter(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
-    let kind = match chars.get(0)? {
+    let kind = match chars.first()? {
         'k' => AugmentKind::Keep,
         'd' => AugmentKind::Drop,
         _ => return None,
@@ -187,12 +193,12 @@ pub fn parse_filter(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
 
     chars = &chars[1..];
 
-    let selector = parse_selector(chars).and_then(|(n, rest)| {
+    let selector = parse_selector(chars).map(|(n, rest)| {
         chars = rest;
-        Some(n)
+        n
     })?;
 
-    return Some((Augmentation::Filter { kind, selector }, chars));
+    Some((Augmentation::Filter { kind, selector }, chars))
 }
 
 fn parse_augments(mut chars: &[char]) -> Option<(impl Iterator<Item = Augmentation>, &[char])> {
@@ -371,23 +377,14 @@ pub fn parse_subexpr(chars: &[char]) -> Result<Option<(Expression, &[char])>, Pa
 }
 
 pub fn parse_term(chars: &[char]) -> Result<Option<(Expression, &[char])>, ParsingError> {
-    Ok(if let Some((n, rest)) = parse_number(chars) {
-        Some((Expression::Constant(n.into()), rest))
-    } else if let Some((subexpr, rest)) = parse_subexpr(chars)? {
-        Some((Expression::Subexpression(Box::new(subexpr)), rest))
-    } else {
-        None
-    })
+    Ok(parse_number(chars)
+        .map(|(n, rest)| (Expression::Constant(n.into()), rest))
+        .or(parse_subexpr(chars)?
+            .map(|(subexpr, rest)| (Expression::Subexpression(Box::new(subexpr)), rest))))
 }
 
 pub fn parse_term_or_dice(chars: &[char]) -> Result<Option<(Expression, &[char])>, ParsingError> {
-    Ok(if let Some((dice, rest)) = parse_dice(chars)? {
-        Some((dice, rest))
-    } else if let Some((term, rest)) = parse_term(chars)? {
-        Some((term, rest))
-    } else {
-        None
-    })
+    Ok(parse_dice(chars)?.or(parse_term(chars)?))
 }
 
 fn _parse(mut chars: &[char]) -> Result<Expression, ParsingError> {
