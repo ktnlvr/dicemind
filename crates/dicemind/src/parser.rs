@@ -128,6 +128,10 @@ pub enum ParsingError {
     UnbalancedLeftParen,
     #[error("Unbalanced right parenthis")]
     UnbalancedRightParen,
+    #[error("Unabalanced annotation left bracket")]
+    UnbalancedLeftBracket,
+    #[error("Unabalanced annotation right bracket")]
+    UnbalancedRightBracket,
     #[error("Undefined symbol `{char}`")]
     UndefinedSymbol { char: char },
     #[error("No operands")]
@@ -370,8 +374,7 @@ pub fn parse_annotation(chars: &[char]) -> Result<Option<(SmolStr, &[char])>, Pa
     }
 
     if chars[0] == ']' {
-        // TODO: Throw a different error?
-        return Err(ParsingError::UnbalancedRightParen);
+        return Err(ParsingError::UnbalancedLeftBracket);
     }
 
     let mut unmatched = 0;
@@ -392,7 +395,7 @@ pub fn parse_annotation(chars: &[char]) -> Result<Option<(SmolStr, &[char])>, Pa
         i += 1;
     }
 
-    Err(ParsingError::UnbalancedLeftParen)
+    Err(ParsingError::UnbalancedRightBracket)
 }
 
 pub fn parse_term(chars: &[char]) -> Result<Option<(Expression, &[char])>, ParsingError> {
