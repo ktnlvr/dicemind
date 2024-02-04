@@ -3,6 +3,7 @@ use std::cmp::Ordering;
 use num::Zero;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
+use smol_str::SmolStr;
 use thiserror::Error;
 
 pub type Integer = num::bigint::BigInt;
@@ -58,6 +59,10 @@ pub enum Expression {
         rhs: Box<Expression>,
     },
     Constant(Integer),
+    Annotated {
+        expression: Box<Expression>,
+        annotation: SmolStr,
+    },
     Subexpression(Box<Expression>),
     UnaryNegation(Box<Expression>),
 }
@@ -228,11 +233,7 @@ fn parse_augments(mut chars: &[char]) -> Option<(impl Iterator<Item = Augmentati
 }
 
 fn parse_number(chars: &[char]) -> Option<(PositiveInteger, &[char])> {
-    if chars.is_empty() {
-        return None;
-    }
-
-    if !chars[0].is_ascii_digit() {
+    if chars.is_empty() || !chars[0].is_ascii_digit() {
         return None;
     }
 
@@ -346,16 +347,12 @@ pub fn parse_selector(chars: &[char]) -> Option<(Selector, &[char])> {
 }
 
 pub fn parse_subexpr(chars: &[char]) -> Result<Option<(Expression, &[char])>, ParsingError> {
-    if chars.is_empty() {
+    if chars.is_empty() || chars[0] != '(' {
         return Ok(None);
     }
 
     if chars[0] == ')' {
         return Err(ParsingError::UnbalancedRightParen);
-    }
-
-    if chars[0] != '(' {
-        return Ok(None);
     }
 
     let mut unmatched = 0;
@@ -368,6 +365,37 @@ pub fn parse_subexpr(chars: &[char]) -> Result<Option<(Expression, &[char])>, Pa
             unmatched -= 1;
             if unmatched == 0 {
                 return Ok(Some((_parse(&chars[1..i])?, &chars[i + 1..])));
+            }
+        }
+        i += 1;
+    }
+
+    Err(ParsingError::UnbalancedLeftParen)
+}
+
+pub fn parse_annotation(chars: &[char]) -> Result<Option<(SmolStr, &[char])>, ParsingError> {
+    if chars.is_empty() || chars[0] != '[' {
+        return Ok(None);
+    }
+
+    if chars[0] == ']' {
+        // TODO: Throw a different error?
+        return Err(ParsingError::UnbalancedRightParen);
+    }
+
+    let mut unmatched = 0;
+    let mut i = 0;
+
+    while i < chars.len() {
+        if chars[i] == '[' {
+            unmatched += 1;
+        } else if chars[i] == ']' {
+            unmatched -= 1;
+            if unmatched == 0 {
+                return Ok(Some((
+                    chars[1..i].iter().cloned().collect(),
+                    &chars[i + 1..],
+                )));
             }
         }
         i += 1;
@@ -418,12 +446,31 @@ fn _parse(mut chars: &[char]) -> Result<Expression, ParsingError> {
             id
         };
 
-        if let Some((term, rest)) = parse_term_or_dice(chars)? {
-            expressions.push(unary_wrapper(term));
+        let mut expr = if let Some((term, rest)) = parse_term_or_dice(chars)? {
             chars = rest;
+            unary_wrapper(term)
         } else {
             return Err(ParsingError::UndefinedSymbol { char: chars[0] });
+        };
+
+        if chars.is_empty() {
+            expressions.push(expr);
+            break;
         }
+
+        while chars[0].is_whitespace() {
+            chars = &chars[1..];
+        }
+
+        if let Some((annotation, rest)) = parse_annotation(chars)? {
+            chars = rest;
+            expr = Expression::Annotated {
+                expression: Box::new(expr),
+                annotation,
+            }
+        }
+
+        expressions.push(expr);
 
         if chars.is_empty() {
             break;

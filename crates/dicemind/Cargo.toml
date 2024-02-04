@@ -4,6 +4,7 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
+smol_str = { version = "0.2.1", features = ["serde"] }
 memoize = "0.4.2"
 num = { verion = "0.4.1", features = ["rand", "serde"] }
 rand = "0.8.5"

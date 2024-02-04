@@ -25,6 +25,10 @@ pub trait Visitor<T> {
             }
             Constant(c) => self.visit_constant(c),
             Subexpression(box e) => self.visit_subexpression(e),
+            Annotated {
+                expression: box expr,
+                ..
+            } => self.visit(expr),
             UnaryNegation(box UnaryNegation(box v)) => self.visit(v),
             UnaryNegation(box v) => {
                 let v = self.visit(v);
