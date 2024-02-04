@@ -137,33 +137,27 @@ pub enum ParsingError {
 }
 
 fn parse_augment_explode(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
-    if let '!' = chars.first()? {
+    chars.first().filter(|c| **c == '!').map(|_| {
         chars = &chars[1..];
         let selector = parse_selector(chars).map(|(selector, rest)| {
             chars = rest;
             selector
         });
 
-        Some((Augmentation::Explode { selector }, chars))
-    } else {
-        None
-    }
+        (Augmentation::Explode { selector }, chars)
+    })
 }
 
 fn parse_augment_emphasis(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
-    if let 'e' = chars.first()? {
+    chars.first().filter(|c| **c == 'e').map(|_| {
         chars = &chars[1..];
-        let n = if let Some((n, rest)) = parse_number(chars) {
+        let n = parse_number(chars).map(|(n, rest)| {
             chars = rest;
-            Some(n)
-        } else {
-            None
-        };
+            n
+        });
 
-        Some((Augmentation::Emphasis { n }, chars))
-    } else {
-        None
-    }
+        (Augmentation::Emphasis { n }, chars)
+    })
 }
 
 fn parse_truncation(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
@@ -214,6 +208,7 @@ fn parse_augments(mut chars: &[char]) -> Option<(impl Iterator<Item = Augmentati
         parse_truncation,
         parse_filter,
     ];
+
     'outer: while !chars.is_empty() {
         for parser in parsers {
             if let Some((augment, rest)) = parser(chars) {
@@ -233,7 +228,7 @@ fn parse_augments(mut chars: &[char]) -> Option<(impl Iterator<Item = Augmentati
 }
 
 fn parse_number(chars: &[char]) -> Option<(PositiveInteger, &[char])> {
-    if chars.is_empty() || !chars[0].is_ascii_digit() {
+    if !chars.first()?.is_ascii_digit() {
         return None;
     }
 
@@ -330,11 +325,7 @@ pub fn parse(input: &str) -> Result<Expression, ParsingError> {
 }
 
 pub fn parse_selector(chars: &[char]) -> Option<(Selector, &[char])> {
-    if chars.is_empty() {
-        return None;
-    }
-
-    let relation = match chars[0] {
+    let relation = match chars.first()? {
         '>' => Ordering::Greater,
         '<' => Ordering::Less,
         '=' => Ordering::Equal,
