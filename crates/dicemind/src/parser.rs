@@ -313,6 +313,12 @@ fn _parse(mut chars: &[char]) -> Result<Expression, ParsingError> {
             sign
         };
 
+        if chars.is_empty() {
+            return Err(ParsingError::NoOperands {
+                operator: BinaryOperator::Add,
+            });
+        }
+
         let (term, rest) =
             parse_term_or_dice(chars)?.ok_or(ParsingError::UnexpectedSymbol { char: chars[0] })?;
         chars = rest;
