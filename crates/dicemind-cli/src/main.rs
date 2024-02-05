@@ -1,11 +1,11 @@
 #![feature(coroutines, coroutine_trait, iter_from_coroutine)]
 
 use defaults::{DEFAULT_HEIGHT, DEFAULT_ITERS, DEFAULT_TRIALS, DEFAULT_WIDTH};
+use dicemind::prelude::*;
 use human_panic::setup_panic;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{collections::HashMap, io::Result as IOResult};
 use textplots::{Chart, Plot, Shape};
-use dicemind::prelude::*;
 
 mod command;
 mod defaults;
@@ -79,24 +79,30 @@ fn sim(
                 let mut values: Vec<_> = values.into_iter().collect();
                 values.sort_unstable_by_key(|(a, _)| *a);
 
-                let max_chance = values.iter().map(|(_, n)| *n).max().unwrap_or(1) as f64;
-
                 let min = values[0].0 as f32;
                 let max = values[values.len() - 1].0 as f32;
-
-                let values: Vec<_> = values
-                    .into_par_iter()
-                    .map(|(n, m)| (n as f32, (m as f64 / max_chance) as f32))
-                    .collect();
 
                 (values, min, max)
             })
             .collect();
 
         for (values, min, max) in tables {
+            let mean: f64 = values
+                .iter()
+                .cloned()
+                .map(|(x, freq)| (x as f64 * freq as f64) / (iterations as f64))
+                .sum();
+
+            let max_frequency = values.iter().map(|(_, n)| *n).max().unwrap_or(1) as f64;
+            let values: Vec<_> = values
+                .into_par_iter()
+                .map(|(n, m)| (n as f32, (m as f64 / max_frequency) as f32))
+                .collect();
+
             Chart::new_with_y_range(width, height, min, max, 0., 1.)
                 .lineplot(&Shape::Steps(&values[..]))
-                .nice();
+                .display();
+            println!("Mean (μ): {mean:.2}")
         }
 
         Ok(())
