@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-use num::Zero;
+use num::{bigint::Sign, Zero};
 use serde::{Deserialize, Serialize};
 use smol_str::SmolStr;
 use thiserror::Error;
@@ -21,8 +21,8 @@ pub enum ParsingError {
     UnbalancedLeftBracket,
     #[error("Unabalanced annotation right bracket")]
     UnbalancedRightBracket,
-    #[error("Undefined symbol `{char}`")]
-    UndefinedSymbol { char: char },
+    #[error("Unexpected symbol `{char}`")]
+    UnexpectedSymbol { char: char },
     #[error("No operands")]
     NoOperands { operator: BinaryOperator },
     #[error("Missing operator between operands")]
@@ -299,29 +299,28 @@ fn _parse(mut chars: &[char]) -> Result<Expression, ParsingError> {
             break;
         }
 
-        // TODO: clean this up?
-        let id = |expr: Expression| expr;
-        let unary_wrapper = if expressions.is_empty() && operators.is_empty() {
-            match chars[0] {
-                '-' => {
-                    chars = &chars[1..];
-                    |expr: Expression| Expression::UnaryNegation(Box::new(expr))
-                }
-                '+' => {
-                    chars = &chars[1..];
-                    id
-                }
-                _ => id,
+        let explicit_sign = {
+            let sign = match chars.first() {
+                Some('+') => Some(Sign::Plus),
+                Some('-') => Some(Sign::Minus),
+                _ => None,
+            };
+
+            if sign.is_some() {
+                chars = &chars[1..];
             }
-        } else {
-            id
+
+            sign
         };
 
-        let mut expr = if let Some((term, rest)) = parse_term_or_dice(chars)? {
-            chars = rest;
-            unary_wrapper(term)
+        let (term, rest) =
+            parse_term_or_dice(chars)?.ok_or(ParsingError::UnexpectedSymbol { char: chars[0] })?;
+        chars = rest;
+
+        let mut expr = if explicit_sign == Some(Sign::Minus) {
+            Expression::UnaryNegation(Box::new(term))
         } else {
-            return Err(ParsingError::UndefinedSymbol { char: chars[0] });
+            term
         };
 
         if chars.is_empty() {
