@@ -98,7 +98,7 @@ pub fn parse_filter(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
     Some((Augmentation::Filter { kind, selector }, chars))
 }
 
-fn parse_augments(mut chars: &[char]) -> Option<(impl Iterator<Item = Augmentation>, &[char])> {
+fn parse_augments(mut chars: &[char]) -> (impl Iterator<Item = Augmentation>, &[char]) {
     let mut augments: Vec<Augmentation> = vec![];
     let parsers = [
         parse_augment_emphasis,
@@ -118,11 +118,7 @@ fn parse_augments(mut chars: &[char]) -> Option<(impl Iterator<Item = Augmentati
         break;
     }
 
-    if !augments.is_empty() {
-        Some((augments.into_iter(), chars))
-    } else {
-        None
-    }
+    (augments.into_iter(), chars)
 }
 
 fn parse_number(chars: &[char]) -> Option<(PositiveInteger, &[char])> {
@@ -274,18 +270,14 @@ fn parse_term_or_dice(mut chars: &[char]) -> Result<Option<(Expression, &[char])
             None
         };
 
-        let augments: Vec<_> = if let Some((augs, rest)) = parse_augments(chars) {
-            chars = rest;
-            augs.collect()
-        } else {
-            vec![]
-        };
+        let (augs, rest) = parse_augments(chars);
+        chars = rest;
 
         return Ok(Some((
             Expression::Dice {
-                count: term.map(|expr| Box::new(expr)),
+                count: term.map(Box::new),
                 power,
-                augmentations: augments.into_iter().collect(),
+                augmentations: augs.collect(),
             },
             chars,
         )));
