@@ -26,6 +26,8 @@ pub enum FastRollerError {
         "Could not truncate dice rolls, you rolled {rolled} dice but the augments tried to remove {removed}"
     )]
     TruncationFailure { rolled: u32, removed: u32 },
+    #[error("The dice roll will always explode")]
+    InfiniteExplosion,
 }
 
 impl<R: Rng> FastRoller<R> {

@@ -125,6 +125,21 @@ pub fn verbose_roll(
             })
             .collect();
 
+        for explode_condition in &explode_conditions {
+            if let Some(Selector { relation, n }) = explode_condition {
+                let a = n.cmp(&PositiveInteger::from(count));
+                let b = n.cmp(&PositiveInteger::from(count * power));
+                dbg!(a, b, relation);
+
+                if PositiveInteger::from(count).cmp(n) == *relation
+                    && PositiveInteger::from(count * power).cmp(n) == *relation
+                {
+                    // TODO: cover the case for the = operator
+                    return Err(FastRollerError::InfiniteExplosion);
+                }
+            }
+        }
+
         move |n: u32, power: u32| -> bool {
             let n1 = PositiveInteger::from(n);
             return !explode_conditions.is_empty()
