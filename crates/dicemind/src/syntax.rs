@@ -22,9 +22,9 @@ impl From<BinaryOperator> for u8 {
         use BinaryOperator::*;
 
         match val {
-            Equals | LessThan | GreaterThan => 3,
-            Multiply => 2,
-            Add | Subtract => 1,
+            Multiply => 3,
+            Add | Subtract => 2,
+            Equals | LessThan | GreaterThan => 1,
         }
     }
 }

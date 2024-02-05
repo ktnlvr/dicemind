@@ -37,7 +37,7 @@ The size of a dice group after a truncation is always certain.
 
 ### D&D
 
-`d20 + 3 + 2` for a level 6 fighter with +2 STR.
+`(2d6 + 2) * (2d20kh + 3 + 2 > 13)` - A level 6 Fighter (profficiency bonus +3) with +2 STR and a weapon that deals 2d6 damage attacking against with advantage a monster with 13 AC.
 
 `2d20kh` rolling with advantage by keeping the highest dice.
 
