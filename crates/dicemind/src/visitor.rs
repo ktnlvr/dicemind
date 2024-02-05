@@ -1,6 +1,6 @@
 use smallvec::SmallVec;
 
-use crate::parser::{Augmentation, BinaryOperator, Expression, Integer};
+use crate::syntax::{Augmentation, BinaryOperator, Expression, Integer};
 
 pub trait Visitor<T> {
     fn visit(&mut self, expr: Expression) -> T {

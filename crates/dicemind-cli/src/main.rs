@@ -1,11 +1,11 @@
 #![feature(coroutines, coroutine_trait, iter_from_coroutine)]
 
 use defaults::{DEFAULT_HEIGHT, DEFAULT_ITERS, DEFAULT_TRIALS, DEFAULT_WIDTH};
-use dicemind::{parser::Expression, prelude::*};
 use human_panic::setup_panic;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{collections::HashMap, io::Result as IOResult};
 use textplots::{Chart, Plot, Shape};
+use dicemind::prelude::*;
 
 mod command;
 mod defaults;

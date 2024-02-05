@@ -3,8 +3,7 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    minmax::MinMax,
-    parser::{Affix, AugmentKind, Augmentation, PositiveInteger, Selector},
+    minmax::MinMax, syntax::{Affix, AugmentKind, Augmentation, PositiveInteger, Selector},
 };
 
 use super::FastRollerError;

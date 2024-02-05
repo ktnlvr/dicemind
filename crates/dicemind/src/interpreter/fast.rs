@@ -3,7 +3,8 @@ use smallvec::SmallVec;
 use thiserror::Error;
 
 use crate::interpreter::verbose_roll;
-use crate::parser::*;
+
+use crate::syntax::{Augmentation, BinaryOperator, Expression, Integer};
 use crate::visitor::Visitor;
 
 use super::RollerConfig;
