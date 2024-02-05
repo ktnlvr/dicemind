@@ -5,7 +5,9 @@ use serde::{Deserialize, Serialize};
 use smol_str::SmolStr;
 use thiserror::Error;
 
-use crate::syntax::{Affix, AugmentKind, Augmentation, BinaryOperator, Expression, PositiveInteger, Selector};
+use crate::syntax::{
+    Affix, AugmentKind, Augmentation, BinaryOperator, Expression, PositiveInteger, Selector,
+};
 
 #[derive(Debug, Error, Clone, Serialize, Deserialize, Copy, Hash, PartialEq, Eq)]
 pub enum ParsingError {
@@ -25,6 +27,11 @@ pub enum ParsingError {
     NoOperands { operator: BinaryOperator },
     #[error("Missing operator between operands")]
     MissingOperator,
+}
+
+pub fn parse(input: &str) -> Result<Expression, ParsingError> {
+    let chars: Vec<char> = input.chars().collect();
+    _parse(&chars[..])
 }
 
 fn parse_augment_explode(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
@@ -138,48 +145,6 @@ fn parse_number(chars: &[char]) -> Option<(PositiveInteger, &[char])> {
     Some((number, &chars[len..]))
 }
 
-fn parse_dice(mut chars: &[char]) -> Result<Option<(Expression, &[char])>, ParsingError> {
-    let count = parse_term(chars)?.map(|(count, rest)| {
-        chars = rest;
-        Box::new(count)
-    });
-
-    if chars.is_empty() {
-        return Ok(None);
-    }
-
-    if chars[0] == 'd' {
-        let power = if let Some((expr, rest)) = parse_term(&chars[1..])? {
-            chars = rest;
-            Some(Box::new(expr))
-        } else if chars.len() >= 2 && chars[1] == '%' {
-            chars = &chars[2..];
-            Some(Box::new(Expression::Constant(100.into())))
-        } else {
-            chars = &chars[1..];
-            None
-        };
-
-        let augments: Vec<_> = if let Some((augs, rest)) = parse_augments(chars) {
-            chars = rest;
-            augs.collect()
-        } else {
-            vec![]
-        };
-
-        return Ok(Some((
-            Expression::Dice {
-                count,
-                power,
-                augmentations: augments.into_iter().collect(),
-            },
-            chars,
-        )));
-    }
-
-    Ok(None)
-}
-
 fn parse_operator(char: char) -> Option<BinaryOperator> {
     use BinaryOperator::*;
 
@@ -210,12 +175,7 @@ pub fn push_operator(
     Ok(())
 }
 
-pub fn parse(input: &str) -> Result<Expression, ParsingError> {
-    let chars: Vec<char> = input.chars().collect();
-    _parse(&chars[..])
-}
-
-pub fn parse_selector(chars: &[char]) -> Option<(Selector, &[char])> {
+fn parse_selector(chars: &[char]) -> Option<(Selector, &[char])> {
     let relation = match chars.first()? {
         '>' => Ordering::Greater,
         '<' => Ordering::Less,
@@ -228,7 +188,7 @@ pub fn parse_selector(chars: &[char]) -> Option<(Selector, &[char])> {
     Some((Selector { relation, n }, rest))
 }
 
-pub fn parse_subexpr(chars: &[char]) -> Result<Option<(Expression, &[char])>, ParsingError> {
+fn parse_subexpr(chars: &[char]) -> Result<Option<(Expression, &[char])>, ParsingError> {
     if chars.is_empty() || chars[0] != '(' {
         return Ok(None);
     }
@@ -255,7 +215,7 @@ pub fn parse_subexpr(chars: &[char]) -> Result<Option<(Expression, &[char])>, Pa
     Err(ParsingError::UnbalancedLeftParen)
 }
 
-pub fn parse_annotation(chars: &[char]) -> Result<Option<(SmolStr, &[char])>, ParsingError> {
+fn parse_annotation(chars: &[char]) -> Result<Option<(SmolStr, &[char])>, ParsingError> {
     if chars.is_empty() || chars[0] != '[' {
         return Ok(None);
     }
@@ -285,15 +245,53 @@ pub fn parse_annotation(chars: &[char]) -> Result<Option<(SmolStr, &[char])>, Pa
     Err(ParsingError::UnbalancedRightBracket)
 }
 
-pub fn parse_term(chars: &[char]) -> Result<Option<(Expression, &[char])>, ParsingError> {
+fn parse_term(chars: &[char]) -> Result<Option<(Expression, &[char])>, ParsingError> {
     Ok(parse_number(chars)
         .map(|(n, rest)| (Expression::Constant(n.into()), rest))
         .or(parse_subexpr(chars)?
             .map(|(subexpr, rest)| (Expression::Subexpression(Box::new(subexpr)), rest))))
 }
 
-pub fn parse_term_or_dice(chars: &[char]) -> Result<Option<(Expression, &[char])>, ParsingError> {
-    Ok(parse_dice(chars)?.or(parse_term(chars)?))
+fn parse_term_or_dice(mut chars: &[char]) -> Result<Option<(Expression, &[char])>, ParsingError> {
+    let term = parse_term(chars)?.map(|(expr, rest)| {
+        chars = rest;
+        expr
+    });
+
+    if chars.is_empty() {
+        return Ok(term.map(|term| (term, chars)));
+    }
+
+    if chars[0] == 'd' {
+        let power = if let Some((expr, rest)) = parse_term(&chars[1..])? {
+            chars = rest;
+            Some(Box::new(expr))
+        } else if chars.len() >= 2 && chars[1] == '%' {
+            chars = &chars[2..];
+            Some(Box::new(Expression::Constant(100.into())))
+        } else {
+            chars = &chars[1..];
+            None
+        };
+
+        let augments: Vec<_> = if let Some((augs, rest)) = parse_augments(chars) {
+            chars = rest;
+            augs.collect()
+        } else {
+            vec![]
+        };
+
+        return Ok(Some((
+            Expression::Dice {
+                count: term.map(|expr| Box::new(expr)),
+                power,
+                augmentations: augments.into_iter().collect(),
+            },
+            chars,
+        )));
+    }
+
+    Ok(term.map(|term| (term, chars)))
 }
 
 fn _parse(mut chars: &[char]) -> Result<Expression, ParsingError> {
