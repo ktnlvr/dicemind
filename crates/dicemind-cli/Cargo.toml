@@ -10,3 +10,4 @@ dicemind = { path = "../dicemind" }
 textplots = "0.8.5"
 rayon = "1.8.1"
 human-panic = { version = "1.2.3", features = ["nightly"] }
+rustyline = "13.0.0"

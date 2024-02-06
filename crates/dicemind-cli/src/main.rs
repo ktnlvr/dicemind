@@ -4,7 +4,7 @@ use defaults::{DEFAULT_HEIGHT, DEFAULT_ITERS, DEFAULT_TRIALS, DEFAULT_WIDTH};
 use dicemind::prelude::*;
 use human_panic::setup_panic;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use std::{collections::HashMap, io::Result as IOResult};
+use std::{collections::HashMap, error::Error};
 use textplots::{Chart, Plot, Shape};
 
 mod command;
@@ -23,12 +23,13 @@ fn roller_from_opts(opts: CliOptions) -> StandardFastRoller {
 }
 
 fn repl(
-    inputs: impl Iterator<Item = IOResult<String>>,
-    action: impl Fn(Expression, CliOptions) -> IOResult<()>,
+    inputs: impl Iterator<Item = Result<String, Box<dyn Error + 'static>>>,
+    action: impl Fn(Expression, CliOptions) -> Result<(), Box<dyn Error + 'static>>,
     options: CliOptions,
-) -> IOResult<()> {
+) -> Result<(), Box<dyn Error + 'static>> {
     for input in inputs {
-        match parse(&input?) {
+        let input = input?;
+        match parse(&input) {
             Ok(expr) => action(expr, options)?,
             Err(err) => println!("err. {err}"),
         }
@@ -37,7 +38,7 @@ fn repl(
     Ok(())
 }
 
-fn roll(expr: Expression, opts: CliOptions) -> IOResult<()> {
+fn roll(expr: Expression, opts: CliOptions) -> Result<(), Box<dyn Error + 'static>> {
     let mut fast_roller = roller_from_opts(opts);
 
     match fast_roller.roll(expr.clone()) {
@@ -55,7 +56,7 @@ fn sim(
     trials: u8,
     height: u32,
     width: u32,
-) -> Box<dyn Fn(Expression, CliOptions) -> IOResult<()>> {
+) -> Box<dyn Fn(Expression, CliOptions) -> Result<(), Box<dyn Error + 'static>>> {
     Box::new(move |expr: Expression, opts: CliOptions| {
         let tables: Vec<(Vec<_>, _, _)> = (0..trials)
             .into_par_iter()
@@ -109,7 +110,7 @@ fn sim(
     })
 }
 
-pub fn main() -> IOResult<()> {
+pub fn main() -> Result<(), Box<dyn Error + 'static>> {
     setup_panic!();
     let m = command().get_matches();
 

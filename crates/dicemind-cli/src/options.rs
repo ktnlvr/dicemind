@@ -1,6 +1,10 @@
-use std::io::{stdin, stdout, Write};
+use std::{
+    error::Error,
+    io::{stdout, Write},
+};
 
 use clap::ArgMatches;
+use rustyline::error::ReadlineError;
 
 #[derive(Debug, Clone, Default, Copy)]
 pub struct CliOptions {
@@ -12,32 +16,50 @@ pub fn options_from_args(args: &ArgMatches) -> CliOptions {
     CliOptions { seed }
 }
 
-fn stdin_input() -> impl Iterator<Item = std::io::Result<String>> {
-    std::iter::from_coroutine(|| loop {
-        print!("dice? ");
-        if let Err(err) = stdout().flush() {
-            yield Err(err);
-            return;
-        };
+fn stdin_input() -> impl Iterator<Item = Result<String, Box<dyn Error + 'static>>> {
+    std::iter::from_coroutine({
+        || {
+            let mut rl = match rustyline::DefaultEditor::new() {
+                Ok(rl) => rl,
+                Err(err) => {
+                    // TODO: fix this error handling?
+                    let err: Box<dyn Error + 'static> = Box::new(err);
+                    yield Err(err);
+                    return;
+                }
+            };
 
-        let mut buf = String::new();
-        if let Err(err) = stdin().read_line(&mut buf) {
-            yield Err(err);
-            return;
-        };
+            loop {
+                if let Err(err) = stdout().flush() {
+                    let err: Box<dyn Error + 'static> = Box::new(err);
+                    yield Err(err);
+                    return;
+                };
 
-        buf = buf.trim().to_string();
-        if buf.is_empty() {
-            return;
+                let mut buf = match rl.readline("dice? ") {
+                    Err(ReadlineError::Interrupted) => return,
+                    Err(err) => {
+                        yield Err(Box::new(err));
+                        return;
+                    }
+                    Ok(line) => line,
+                };
+
+                buf = buf.trim().to_string();
+                if buf.is_empty() {
+                    return;
+                }
+
+                rl.add_history_entry(buf.clone()).unwrap();
+                yield Ok(buf);
+            }
         }
-
-        yield Ok(buf);
     })
 }
 
 pub fn input_method_from_args(
     args: &ArgMatches,
-) -> Box<dyn Iterator<Item = Result<String, std::io::Error>>> {
+) -> Box<dyn Iterator<Item = Result<String, Box<dyn Error + 'static>>>> {
     // XXX: A bit of a mess
     let exprs: Option<Vec<_>> = args
         .get_many::<String>("exprs")
@@ -47,7 +69,7 @@ pub fn input_method_from_args(
         Box::new(
             exprs
                 .into_iter()
-                .map(|s| -> Result<String, std::io::Error> {
+                .map(|s| -> Result<String, Box<dyn Error + 'static>> {
                     println!("dice? {}", s);
                     Ok(s)
                 }),
