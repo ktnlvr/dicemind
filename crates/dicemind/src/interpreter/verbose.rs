@@ -139,7 +139,7 @@ impl<R: Rng> Visitor<RollerResult<VerboseRoll>> for VerboseRoller<R> {
         } = rhs?;
 
         let annotated_results = {
-            annotations_lhs.extend(annotations_rhs);
+            annotations_lhs.extend(annotations_rhs.clone());
             annotations_lhs
         };
 
@@ -157,6 +157,10 @@ impl<R: Rng> Visitor<RollerResult<VerboseRoll>> for VerboseRoller<R> {
             }),
             Multiply => Ok(VerboseRoll {
                 sum: t_lhs.checked_mul(&t_rhs).ok_or(RollerError::Overflow)?,
+                annotated_results,
+            }),
+            Chain => Ok(VerboseRoll {
+                sum: t_rhs,
                 annotated_results,
             }),
         }

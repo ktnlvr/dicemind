@@ -12,6 +12,7 @@ pub type PositiveInteger = num::bigint::BigUint;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
 pub enum BinaryOperator {
+    Chain,
     Equals,
     LessThan,
     GreaterThan,
@@ -28,6 +29,7 @@ impl From<BinaryOperator> for u8 {
             Multiply => 3,
             Add | Subtract => 2,
             Equals | LessThan | GreaterThan => 1,
+            Chain => 0,
         }
     }
 }
@@ -187,6 +189,7 @@ impl Display for Expression {
                     Add => f.write_char('+'),
                     Subtract => f.write_char('-'),
                     Multiply => f.write_char('*'),
+                    Chain => f.write_char(','),
                 }?;
 
                 match rhs.as_ref() {

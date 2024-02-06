@@ -144,6 +144,7 @@ fn parse_operator(char: char) -> Option<BinaryOperator> {
     use BinaryOperator::*;
 
     match char {
+        ',' => Some(Chain),
         '+' => Some(Add),
         '-' => Some(Subtract),
         '*' => Some(Multiply),

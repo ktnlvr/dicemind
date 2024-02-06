@@ -81,6 +81,7 @@ impl<R: Rng> Visitor<RollerResult<i64>> for NaiveRoller<R> {
             Add => lhs?.checked_add(rhs?).ok_or(Overflow),
             Subtract => lhs?.checked_sub(rhs?).ok_or(Overflow),
             Multiply => lhs?.checked_mul(rhs?).ok_or(Overflow),
+            Chain => rhs,
         }
     }
 
