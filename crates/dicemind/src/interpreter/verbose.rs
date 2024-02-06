@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use num::ToPrimitive;
 use rand::{Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -10,7 +9,7 @@ use crate::{
     syntax::{AnnotationString, Augmentation, BinaryOperator, Integer},
 };
 
-use super::{DiceRoll, RollerConfig, RollerError, RollerResult};
+use super::{try_from_big_int, DiceRoll, RollerConfig, RollerResult};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VerboseRoll {
@@ -67,7 +66,7 @@ impl<R: Rng> Visitor<RollerResult<VerboseRoll>> for VerboseRoller<R> {
     }
 
     fn visit_constant(&mut self, c: Integer) -> RollerResult<VerboseRoll> {
-        let constant = c.to_i64().ok_or(RollerError::ValueTooLarge { value: c })?;
+        let constant = try_from_big_int::<i64>(c)?;
         Ok(VerboseRoll {
             total: DiceRoll::from(constant),
             ..Default::default()

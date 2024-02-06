@@ -1,15 +1,28 @@
-use num::ToPrimitive;
 use rand::Rng;
 
 use super::{RollerError, RollerResult};
 use crate::{
     minmax::MinMax,
-    syntax::{Affix, AugmentKind, Augmentation, Selector},
+    syntax::{Affix, AugmentKind, Augmentation, Integer, PositiveInteger, Selector},
 };
 
 use std::ops::{Add, AddAssign, Mul};
 
 use serde::{Deserialize, Serialize};
+
+pub(crate) fn try_from_positive_big_int<T: TryFrom<PositiveInteger>>(
+    value: PositiveInteger,
+) -> RollerResult<T> {
+    T::try_from(value.clone()).map_err(|_| RollerError::ValueTooLarge {
+        value: value.into(),
+    })
+}
+
+pub(crate) fn try_from_big_int<T: TryFrom<Integer>>(value: Integer) -> RollerResult<T> {
+    T::try_from(value.clone()).map_err(|_| RollerError::ValueTooLarge {
+        value: value.into(),
+    })
+}
 
 #[derive(Debug, Default, Serialize, Clone, Copy, Deserialize, PartialEq, Eq, Hash)]
 pub struct DiceRoll {
@@ -81,12 +94,7 @@ fn apply_augments(
             Truncate { kind, affix, n } => {
                 use Affix::*;
 
-                let n = n
-                    .map(|x| {
-                        x.to_i64()
-                            .ok_or(RollerError::ValueTooLarge { value: x.into() })
-                    })
-                    .unwrap_or(Ok(1))?;
+                let n = n.map(|x| try_from_positive_big_int(x)).unwrap_or(Ok(1))?;
                 let i = match rolls.binary_search_by(|x| x.value.cmp(&n)) {
                     Ok(i) => i,
                     Err(i) => i,
@@ -110,9 +118,7 @@ fn apply_augments(
             Filter { kind, selector } => {
                 use std::cmp::Ordering::*;
                 let Selector { relation, n } = selector;
-                let n = n
-                    .to_i64()
-                    .ok_or(RollerError::ValueTooLarge { value: n.into() })?;
+                let n = try_from_positive_big_int(n)?;
 
                 let predicate: Box<dyn Fn(&mut DiceRoll) -> bool> = match (kind, relation) {
                     (Drop, Less) => Box::new(|x| x.collapse() < n),
@@ -180,5 +186,6 @@ pub fn simple_roll(roller: &mut impl Rng, count: i64, power: i64) -> RollerResul
         sum = sum.checked_add(n).ok_or(Overflow)?;
     }
 
+    // TODO: Check these
     Ok(sum.mul(count.signum() * power.signum()))
 }

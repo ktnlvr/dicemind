@@ -7,7 +7,7 @@ use crate::interpreter::{augmented_roll, simple_roll};
 use crate::syntax::{Augmentation, BinaryOperator, Expression, Integer};
 use crate::visitor::Visitor;
 
-use super::{RollerConfig, RollerError, RollerResult};
+use super::{try_from_big_int, try_from_positive_big_int, RollerConfig, RollerError, RollerResult};
 
 pub type StandardFastRoller = NaiveRoller<StdRng>;
 
@@ -48,10 +48,8 @@ impl<R: Rng> Visitor<RollerResult<i64>> for NaiveRoller<R> {
         power: Option<RollerResult<i64>>,
         augments: SmallVec<[Augmentation; 1]>,
     ) -> RollerResult<i64> {
-        let count = count
-            .unwrap_or(i64::try_from(self.config.count()).map_err(|_| RollerError::Overflow))?;
-        let power = power
-            .unwrap_or(i64::try_from(self.config.power()).map_err(|_| RollerError::Overflow))?;
+        let power = power.unwrap_or(try_from_positive_big_int(self.config.power()))?;
+        let count = count.unwrap_or(try_from_positive_big_int(self.config.count()))?;
 
         if augments.is_empty() {
             simple_roll(&mut self.rng, count, power)
@@ -65,7 +63,7 @@ impl<R: Rng> Visitor<RollerResult<i64>> for NaiveRoller<R> {
     }
 
     fn visit_constant(&mut self, c: Integer) -> RollerResult<i64> {
-        c.to_i64().ok_or(RollerError::ValueTooLarge { value: c })
+        try_from_big_int(c)
     }
 
     fn visit_binop(
