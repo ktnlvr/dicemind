@@ -2,11 +2,10 @@ use std::cmp::Ordering;
 
 use num::{bigint::Sign, Zero};
 use serde::{Deserialize, Serialize};
-use smol_str::SmolStr;
 use thiserror::Error;
 
 use crate::syntax::{
-    Affix, AugmentKind, Augmentation, BinaryOperator, Expression, PositiveInteger, Selector,
+    Affix, AnnotationString, AugmentKind, Augmentation, BinaryOperator, Expression, PositiveInteger, Selector
 };
 
 #[derive(Debug, Error, Clone, Serialize, Deserialize, Copy, Hash, PartialEq, Eq)]
@@ -211,7 +210,7 @@ fn parse_subexpr(chars: &[char]) -> Result<Option<(Expression, &[char])>, Parsin
     Err(ParsingError::UnbalancedLeftParen)
 }
 
-fn parse_annotation(chars: &[char]) -> Result<Option<(SmolStr, &[char])>, ParsingError> {
+fn parse_annotation(chars: &[char]) -> Result<Option<(AnnotationString, &[char])>, ParsingError> {
     if chars.is_empty() || chars[0] != '[' {
         return Ok(None);
     }

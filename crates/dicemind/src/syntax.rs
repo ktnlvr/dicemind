@@ -44,6 +44,8 @@ impl PartialOrd for BinaryOperator {
     }
 }
 
+pub type AnnotationString = SmolStr;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Expression {
     Dice {
@@ -59,7 +61,7 @@ pub enum Expression {
     Constant(Integer),
     Annotated {
         expression: Box<Expression>,
-        annotation: SmolStr,
+        annotation: AnnotationString,
     },
     Subexpression(Box<Expression>),
     UnaryNegation(Box<Expression>),
