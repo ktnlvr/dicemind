@@ -30,10 +30,10 @@ pub(crate) fn try_from_big_int<T: TryFrom<Integer>>(value: Integer) -> RollerRes
 
 #[derive(Debug, Default, Serialize, Clone, Copy, Deserialize, PartialEq, Eq, Hash)]
 pub struct DiceRoll {
-    pub(crate) value: i64,
-    pub(crate) exploded: bool,
-    pub(crate) critical_fumble: bool,
-    pub(crate) critical_success: bool,
+    pub value: i64,
+    pub exploded: bool,
+    pub critical_fumble: bool,
+    pub critical_success: bool,
 }
 
 impl From<i64> for DiceRoll {

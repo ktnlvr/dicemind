@@ -1,7 +1,10 @@
 #![feature(coroutines, coroutine_trait, iter_from_coroutine)]
 
 use defaults::{DEFAULT_HEIGHT, DEFAULT_TRIALS, DEFAULT_WIDTH};
-use dicemind::prelude::*;
+use dicemind::{
+    interpreter::{DiceRoll, StandardVerboseRoller, VerboseRoll, VerboseRoller},
+    prelude::*,
+};
 use human_panic::setup_panic;
 use simulate::{print_chart, simulate, SimulationOptions};
 use std::error::Error;
@@ -13,14 +16,6 @@ mod simulate;
 
 use command::*;
 use options::*;
-
-fn roller_from_opts(opts: CliOptions) -> StandardFastRoller {
-    if let Some(seed) = opts.seed {
-        StandardFastRoller::new_seeded(seed)
-    } else {
-        StandardFastRoller::default()
-    }
-}
 
 fn repl(
     inputs: impl Iterator<Item = Result<String, Box<dyn Error + 'static>>>,
@@ -39,11 +34,15 @@ fn repl(
 }
 
 fn roll(expr: Expression, opts: CliOptions) -> Result<(), Box<dyn Error + 'static>> {
-    let mut fast_roller = roller_from_opts(opts);
+    let mut fast_roller = StandardVerboseRoller::default();
 
-    match fast_roller.roll(expr.clone()) {
-        Ok(res) => {
-            println!("ok. {res}")
+    match fast_roller.roll(expr.clone()).map(VerboseRoll::into_inner) {
+        Ok((sum, annotations)) => {
+            let DiceRoll { value, .. } = sum;
+            println!("ok. {value}");
+            annotations
+                .into_iter()
+                .for_each(|(note, DiceRoll { value, .. })| println!("[{note}] = {value}"));
         }
         Err(err) => println!("err. {err}"),
     };

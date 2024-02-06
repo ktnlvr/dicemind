@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use num::{CheckedAdd, CheckedMul, CheckedSub};
-use rand::{Rng, SeedableRng};
+use rand::{rngs::StdRng, Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 
@@ -35,7 +35,9 @@ impl VerboseRoll {
     }
 }
 
-pub struct VerboseRoller<R: Rng> {
+pub type StandardVerboseRoller = VerboseRoller<StdRng>;
+
+pub struct VerboseRoller<R: Rng = StdRng> {
     rng: R,
     config: RollerConfig,
 }
@@ -43,6 +45,15 @@ pub struct VerboseRoller<R: Rng> {
 impl<R: Rng> VerboseRoller<R> {
     pub fn roll(&mut self, expr: Expression) -> RollerResult<VerboseRoll> {
         self.visit(expr)
+    }
+}
+
+impl<R: SeedableRng + Rng> Default for VerboseRoller<R> {
+    fn default() -> Self {
+        Self {
+            config: Default::default(),
+            rng: R::from_entropy(),
+        }
     }
 }
 
