@@ -82,7 +82,10 @@ fn apply_augments(
                 use Affix::*;
 
                 let n = n
-                    .map(|x| x.to_i64().ok_or(RollerError::ValueTooLarge))
+                    .map(|x| {
+                        x.to_i64()
+                            .ok_or(RollerError::ValueTooLarge { value: x.into() })
+                    })
                     .unwrap_or(Ok(1))?;
                 let i = match rolls.binary_search_by(|x| x.value.cmp(&n)) {
                     Ok(i) => i,
@@ -107,7 +110,9 @@ fn apply_augments(
             Filter { kind, selector } => {
                 use std::cmp::Ordering::*;
                 let Selector { relation, n } = selector;
-                let n = n.to_i64().ok_or(RollerError::ValueTooLarge)?;
+                let n = n
+                    .to_i64()
+                    .ok_or(RollerError::ValueTooLarge { value: n.into() })?;
 
                 let predicate: Box<dyn Fn(&mut DiceRoll) -> bool> = match (kind, relation) {
                     (Drop, Less) => Box::new(|x| x.collapse() < n),
@@ -162,18 +167,17 @@ pub fn augmented_roll(
 }
 
 pub fn simple_roll(roller: &mut impl Rng, count: i64, power: i64) -> RollerResult<i64> {
+    use RollerError::*;
+
     if count == 0 || power == 0 {
         return Ok(0);
     }
 
-    use RollerError::*;
     let mut sum = 0i64;
 
     for _ in 0..count.abs() {
         let n = roller.gen_range(1..=power.abs());
-        sum = sum
-            .checked_add(n.try_into().map_err(|_| ValueTooLarge)?)
-            .ok_or(Overflow)?;
+        sum = sum.checked_add(n).ok_or(Overflow)?;
     }
 
     Ok(sum.mul(count.signum() * power.signum()))

@@ -67,7 +67,7 @@ impl<R: Rng> Visitor<RollerResult<VerboseRoll>> for VerboseRoller<R> {
     }
 
     fn visit_constant(&mut self, c: Integer) -> RollerResult<VerboseRoll> {
-        let constant = c.to_i64().ok_or(RollerError::ValueTooLarge)?;
+        let constant = c.to_i64().ok_or(RollerError::ValueTooLarge { value: c })?;
         Ok(VerboseRoll {
             total: DiceRoll::from(constant),
             ..Default::default()

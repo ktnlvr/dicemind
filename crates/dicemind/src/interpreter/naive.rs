@@ -1,3 +1,4 @@
+use num::ToPrimitive;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use smallvec::SmallVec;
 
@@ -64,7 +65,7 @@ impl<R: Rng> Visitor<RollerResult<i64>> for NaiveRoller<R> {
     }
 
     fn visit_constant(&mut self, c: Integer) -> RollerResult<i64> {
-        c.try_into().map_err(|_| RollerError::ValueTooLarge)
+        c.to_i64().ok_or(RollerError::ValueTooLarge { value: c })
     }
 
     fn visit_binop(

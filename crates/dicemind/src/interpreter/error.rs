@@ -1,11 +1,16 @@
 use thiserror::Error;
 
-use crate::{prelude::Expression, syntax::AnnotationString};
+use crate::{
+    prelude::Expression,
+    syntax::{AnnotationString, Integer},
+};
 
 #[derive(Debug, Error)]
 pub enum RollerError {
-    #[error("Value too large and can't fit inside 2^31 - 1")]
-    ValueTooLarge,
+    // The input is too large
+    #[error("Input value {value} too large and can't fit inside 2^63 - 1")]
+    ValueTooLarge { value: Integer },
+    // Error while computing, the computation could not be finished
     #[error("The value has overflown, the result was too large")]
     Overflow,
     #[error(
