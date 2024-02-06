@@ -1,3 +1,4 @@
+use num::{CheckedAdd, CheckedMul, CheckedSub};
 use rand::Rng;
 
 use super::{RollerError, RollerResult};
@@ -6,7 +7,10 @@ use crate::{
     syntax::{Affix, AugmentKind, Augmentation, Integer, PositiveInteger, Selector},
 };
 
-use std::ops::{Add, AddAssign, Mul};
+use std::{
+    iter::Sum,
+    ops::{Add, AddAssign, Mul, Sub},
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -26,10 +30,10 @@ pub(crate) fn try_from_big_int<T: TryFrom<Integer>>(value: Integer) -> RollerRes
 
 #[derive(Debug, Default, Serialize, Clone, Copy, Deserialize, PartialEq, Eq, Hash)]
 pub struct DiceRoll {
-    value: i64,
-    exploded: bool,
-    critical_fumble: bool,
-    critical_success: bool,
+    pub(crate) value: i64,
+    pub(crate) exploded: bool,
+    pub(crate) critical_fumble: bool,
+    pub(crate) critical_success: bool,
 }
 
 impl From<i64> for DiceRoll {
@@ -37,19 +41,6 @@ impl From<i64> for DiceRoll {
         Self {
             value,
             ..Default::default()
-        }
-    }
-}
-
-impl Add for DiceRoll {
-    type Output = DiceRoll;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            value: self.value + rhs.value,
-            exploded: self.exploded || rhs.exploded,
-            critical_fumble: self.critical_fumble || rhs.critical_fumble,
-            critical_success: self.critical_success || rhs.critical_success,
         }
     }
 }
@@ -79,6 +70,52 @@ impl PartialOrd for DiceRoll {
 impl DiceRoll {
     pub fn collapse(&self) -> i64 {
         self.value
+    }
+}
+
+macro_rules! impl_dice_roll_arithmetic {
+    ($t: tt, $name: ident) => {
+        impl $t for DiceRoll {
+            type Output = Self;
+
+            fn $name(self, rhs: Self) -> Self {
+                Self {
+                    value: $t::$name(self.value, rhs.value),
+                    exploded: self.exploded || rhs.exploded,
+                    critical_fumble: self.critical_fumble || rhs.critical_fumble,
+                    critical_success: self.critical_success || rhs.critical_success,
+                }
+            }
+        }
+    };
+}
+
+macro_rules! impl_dice_roll_arithmetic_checked {
+    ($t: tt, $name: ident) => {
+        impl $t for DiceRoll {
+            fn $name(&self, rhs: &Self) -> Option<Self> {
+                Some(Self {
+                    value: $t::$name(&self.value, &rhs.value)?,
+                    exploded: self.exploded || rhs.exploded,
+                    critical_fumble: self.critical_fumble || rhs.critical_fumble,
+                    critical_success: self.critical_success || rhs.critical_success,
+                })
+            }
+        }
+    };
+}
+
+impl_dice_roll_arithmetic!(Add, add);
+impl_dice_roll_arithmetic!(Sub, sub);
+impl_dice_roll_arithmetic!(Mul, mul);
+
+impl_dice_roll_arithmetic_checked!(CheckedAdd, checked_add);
+impl_dice_roll_arithmetic_checked!(CheckedSub, checked_sub);
+impl_dice_roll_arithmetic_checked!(CheckedMul, checked_mul);
+
+impl Sum for DiceRoll {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(DiceRoll::default(), |acc, n| acc + n)
     }
 }
 

@@ -1,4 +1,3 @@
-use num::ToPrimitive;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use smallvec::SmallVec;
 

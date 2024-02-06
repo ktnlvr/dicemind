@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use num::{CheckedAdd, CheckedMul, CheckedSub};
 use rand::{Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -9,17 +10,20 @@ use crate::{
     syntax::{AnnotationString, Augmentation, BinaryOperator, Integer},
 };
 
-use super::{try_from_big_int, DiceRoll, RollerConfig, RollerResult};
+use super::{
+    augmented_roll, simple_roll, try_from_big_int, try_from_positive_big_int, DiceRoll,
+    RollerConfig, RollerError, RollerResult,
+};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VerboseRoll {
-    total: DiceRoll,
+    sum: DiceRoll,
     annotated_results: HashMap<AnnotationString, DiceRoll>,
 }
 
 impl VerboseRoll {
     pub fn total(&self) -> DiceRoll {
-        self.total
+        self.sum
     }
 
     pub fn annotated_results(&self) -> impl Iterator<Item = (&AnnotationString, &DiceRoll)> {
@@ -27,7 +31,7 @@ impl VerboseRoll {
     }
 
     pub fn into_inner(self) -> (DiceRoll, HashMap<AnnotationString, DiceRoll>) {
-        (self.total, self.annotated_results)
+        (self.sum, self.annotated_results)
     }
 }
 
@@ -52,36 +56,106 @@ impl<R: SeedableRng + Rng> VerboseRoller<R> {
 }
 
 impl<R: Rng> Visitor<RollerResult<VerboseRoll>> for VerboseRoller<R> {
-    fn visit_negation(&mut self, _value: RollerResult<VerboseRoll>) -> RollerResult<VerboseRoll> {
-        todo!()
+    fn visit_negation(&mut self, value: RollerResult<VerboseRoll>) -> RollerResult<VerboseRoll> {
+        let VerboseRoll {
+            sum: total,
+            annotated_results,
+        } = value?;
+
+        let total = DiceRoll {
+            value: total.value.checked_neg().ok_or(RollerError::Overflow)?,
+            exploded: total.exploded,
+            critical_fumble: total.critical_fumble,
+            critical_success: total.critical_success,
+        };
+
+        Ok(VerboseRoll {
+            sum: total,
+            annotated_results,
+        })
     }
 
     fn visit_dice(
         &mut self,
-        _count: Option<RollerResult<VerboseRoll>>,
-        _power: Option<RollerResult<VerboseRoll>>,
-        _augments: SmallVec<[Augmentation; 1]>,
+        count: Option<RollerResult<VerboseRoll>>,
+        power: Option<RollerResult<VerboseRoll>>,
+        augments: SmallVec<[Augmentation; 1]>,
     ) -> RollerResult<VerboseRoll> {
-        todo!()
+        let power = power
+            .map(|p| p.map(|roll| roll.total().collapse()))
+            .unwrap_or(try_from_positive_big_int(self.config.power()))?;
+        let count = count
+            .map(|c| c.map(|roll| roll.total().collapse()))
+            .unwrap_or(try_from_positive_big_int(self.config.count()))?;
+
+        Ok(VerboseRoll {
+            sum: if augments.is_empty() {
+                simple_roll(&mut self.rng, count, power)?.into()
+            } else {
+                // Fallback to using verbose rolling
+                augmented_roll(&mut self.rng, count, power, augments)?
+                    .into_iter()
+                    .sum::<DiceRoll>()
+            },
+            ..Default::default()
+        })
     }
 
     fn visit_constant(&mut self, c: Integer) -> RollerResult<VerboseRoll> {
         let constant = try_from_big_int::<i64>(c)?;
         Ok(VerboseRoll {
-            total: DiceRoll::from(constant),
+            sum: DiceRoll::from(constant),
             ..Default::default()
         })
     }
 
     fn visit_binop(
         &mut self,
-        _op: BinaryOperator,
+        op: BinaryOperator,
         lhs: RollerResult<VerboseRoll>,
         rhs: RollerResult<VerboseRoll>,
     ) -> RollerResult<VerboseRoll> {
-        let _lhs = lhs?;
-        let _rhs = rhs?;
+        use BinaryOperator::*;
+        let VerboseRoll {
+            sum: t_lhs,
+            annotated_results: mut annotations_lhs,
+        } = lhs?;
+        let VerboseRoll {
+            sum: t_rhs,
+            annotated_results: annotations_rhs,
+        } = rhs?;
 
-        todo!()
+        let annotated_results = {
+            annotations_lhs.extend(annotations_rhs);
+            annotations_lhs
+        };
+
+        match op {
+            Equals => todo!(),
+            LessThan => todo!(),
+            GreaterThan => todo!(),
+            Add => Ok(VerboseRoll {
+                sum: t_lhs.checked_add(&t_rhs).ok_or(RollerError::Overflow)?,
+                annotated_results,
+            }),
+            Subtract => Ok(VerboseRoll {
+                sum: t_lhs.checked_sub(&t_rhs).ok_or(RollerError::Overflow)?,
+                annotated_results,
+            }),
+            Multiply => Ok(VerboseRoll {
+                sum: t_lhs.checked_mul(&t_rhs).ok_or(RollerError::Overflow)?,
+                annotated_results,
+            }),
+        }
+    }
+
+    fn visit_annotated(
+        &mut self,
+        expr: Expression,
+        annotation: AnnotationString,
+    ) -> RollerResult<VerboseRoll> {
+        let mut roll = self.visit(expr)?;
+        roll.annotated_results.insert(annotation, roll.sum.clone());
+        Ok(roll)
     }
 }
