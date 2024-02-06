@@ -1,4 +1,7 @@
-use std::cmp::Ordering;
+use std::{
+    cmp::Ordering,
+    fmt::{Display, Write},
+};
 
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -46,7 +49,7 @@ impl PartialOrd for BinaryOperator {
 
 pub type AnnotationString = SmolStr;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Expression {
     Dice {
         count: Option<Box<Expression>>,
@@ -65,6 +68,21 @@ pub enum Expression {
     },
     Subexpression(Box<Expression>),
     UnaryNegation(Box<Expression>),
+}
+
+impl Expression {
+    pub fn is_trivial(&self) -> bool {
+        use Expression::*;
+
+        match self {
+            Constant(_) => true,
+            Dice { .. } => true,
+            Binop { .. } => false,
+            Subexpression(_) => true,
+            UnaryNegation(_) => false,
+            Annotated { .. } => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash, Copy, Deserialize)]
@@ -118,4 +136,75 @@ pub enum Augmentation {
         // On what values to explode
         selector: Option<Selector>,
     },
+}
+
+impl Display for Expression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use BinaryOperator::*;
+        use Expression::*;
+
+        match self {
+            Dice {
+                count,
+                power,
+                augmentations,
+            } => {
+                if let Some(c) = count {
+                    if c.is_trivial() {
+                        f.write_fmt(format_args!("{}", c))?;
+                    } else {
+                        f.write_char('(')?;
+                        f.write_fmt(format_args!("{}", c))?;
+                        f.write_char(')')?;
+                    }
+                }
+                f.write_char('d')?;
+
+                if let Some(p) = power {
+                    f.write_fmt(format_args!("{}", p))?;
+                }
+
+                if augmentations.len() != 0 {
+                    todo!()
+                }
+
+                Ok(())
+            }
+            Binop { operator, lhs, rhs } => {
+                match lhs.as_ref() {
+                    Subexpression(box Binop {
+                        operator: child_operator,
+                        ..
+                    }) if child_operator < operator => f.write_fmt(format_args!("({lhs}) ")),
+                    _ if !lhs.is_trivial() => f.write_fmt(format_args!("({lhs}) ")),
+                    _ => f.write_fmt(format_args!("{lhs} ")),
+                }?;
+
+                match operator {
+                    Equals => f.write_char('='),
+                    LessThan => f.write_char('<'),
+                    GreaterThan => f.write_char('>'),
+                    Add => f.write_char('+'),
+                    Subtract => f.write_char('-'),
+                    Multiply => f.write_char('*'),
+                }?;
+
+                match rhs.as_ref() {
+                    Subexpression(box Binop {
+                        operator: child_operator,
+                        ..
+                    }) if child_operator < operator => f.write_fmt(format_args!(" ({rhs})")),
+                    _ if !rhs.is_trivial() => f.write_fmt(format_args!(" ({rhs})")),
+                    _ => f.write_fmt(format_args!(" {rhs}")),
+                }
+            }
+            Constant(c) => f.write_fmt(format_args!("{c}")),
+            Annotated {
+                expression,
+                annotation,
+            } => f.write_fmt(format_args!("{expression} [{annotation}]")),
+            Subexpression(expr) => f.write_fmt(format_args!("{expr}")),
+            UnaryNegation(expr) => f.write_fmt(format_args!("-{expr}")),
+        }
+    }
 }

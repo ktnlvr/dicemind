@@ -2,7 +2,7 @@
 
 use defaults::{DEFAULT_HEIGHT, DEFAULT_TRIALS, DEFAULT_WIDTH};
 use dicemind::{
-    interpreter::{DiceRoll, StandardVerboseRoller, VerboseRoll, VerboseRoller},
+    interpreter::{DiceRoll, StandardVerboseRoller, VerboseRoll},
     prelude::*,
 };
 use human_panic::setup_panic;
@@ -42,7 +42,9 @@ fn roll(expr: Expression, opts: CliOptions) -> Result<(), Box<dyn Error + 'stati
             println!("ok. {value}");
             annotations
                 .into_iter()
-                .for_each(|(note, DiceRoll { value, .. })| println!("[{note}] = {value}"));
+                .for_each(|(note, (expr, DiceRoll { value, .. }))| {
+                    println!("{expr} [{note}] = {value}")
+                });
         }
         Err(err) => println!("err. {err}"),
     };

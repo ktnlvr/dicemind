@@ -18,7 +18,7 @@ use super::{
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VerboseRoll {
     sum: DiceRoll,
-    annotated_results: HashMap<AnnotationString, DiceRoll>,
+    annotated_results: HashMap<AnnotationString, (Expression, DiceRoll)>,
 }
 
 impl VerboseRoll {
@@ -26,11 +26,13 @@ impl VerboseRoll {
         self.sum
     }
 
-    pub fn annotated_results(&self) -> impl Iterator<Item = (&AnnotationString, &DiceRoll)> {
+    pub fn annotated_results(
+        &self,
+    ) -> impl Iterator<Item = (&AnnotationString, &(Expression, DiceRoll))> {
         self.annotated_results.iter()
     }
 
-    pub fn into_inner(self) -> (DiceRoll, HashMap<AnnotationString, DiceRoll>) {
+    pub fn into_inner(self) -> (DiceRoll, HashMap<AnnotationString, (Expression, DiceRoll)>) {
         (self.sum, self.annotated_results)
     }
 }
@@ -165,8 +167,9 @@ impl<R: Rng> Visitor<RollerResult<VerboseRoll>> for VerboseRoller<R> {
         expr: Expression,
         annotation: AnnotationString,
     ) -> RollerResult<VerboseRoll> {
-        let mut roll = self.visit(expr)?;
-        roll.annotated_results.insert(annotation, roll.sum.clone());
+        let mut roll = self.visit(expr.clone())?;
+        roll.annotated_results
+            .insert(annotation, (expr, roll.sum.clone()));
         Ok(roll)
     }
 }
