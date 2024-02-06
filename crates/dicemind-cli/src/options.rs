@@ -12,16 +12,6 @@ pub struct DisplayOptions {
     pub width: u32,
 }
 
-#[derive(Debug, Clone, Default, Copy)]
-pub struct CliOptions {
-    pub seed: Option<u64>,
-}
-
-pub fn options_from_args(args: &ArgMatches) -> CliOptions {
-    let seed = args.get_one("seed").cloned();
-    CliOptions { seed }
-}
-
 fn stdin_input() -> impl Iterator<Item = Result<String, Box<dyn Error + 'static>>> {
     std::iter::from_coroutine({
         || {

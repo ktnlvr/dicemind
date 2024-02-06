@@ -19,13 +19,12 @@ use options::*;
 
 fn repl(
     inputs: impl Iterator<Item = Result<String, Box<dyn Error + 'static>>>,
-    action: impl Fn(Expression, CliOptions) -> Result<(), Box<dyn Error + 'static>>,
-    options: CliOptions,
+    action: impl Fn(Expression) -> Result<(), Box<dyn Error + 'static>>,
 ) -> Result<(), Box<dyn Error + 'static>> {
     for input in inputs {
         let input = input?;
         match parse(&input) {
-            Ok(expr) => action(expr, options)?,
+            Ok(expr) => action(expr)?,
             Err(err) => println!("err. {err}"),
         }
     }
@@ -33,7 +32,7 @@ fn repl(
     Ok(())
 }
 
-fn roll(expr: Expression, opts: CliOptions) -> Result<(), Box<dyn Error + 'static>> {
+fn roll(expr: Expression) -> Result<(), Box<dyn Error + 'static>> {
     let mut fast_roller = StandardVerboseRoller::default();
 
     match fast_roller.roll(expr.clone()).map(VerboseRoll::into_inner) {
@@ -55,8 +54,8 @@ fn roll(expr: Expression, opts: CliOptions) -> Result<(), Box<dyn Error + 'stati
 fn sim(
     options: SimulationOptions,
     display: DisplayOptions,
-) -> Box<dyn Fn(Expression, CliOptions) -> Result<(), Box<dyn Error + 'static>>> {
-    Box::new(move |expr: Expression, _: CliOptions| {
+) -> Box<dyn Fn(Expression) -> Result<(), Box<dyn Error + 'static>>> {
+    Box::new(move |expr: Expression| {
         let ft = simulate(expr, options)?;
         print_chart(display, [((0, 0, 0), &ft)].into_iter());
 
@@ -68,11 +67,10 @@ pub fn main() -> Result<(), Box<dyn Error + 'static>> {
     setup_panic!();
     let m = command().get_matches();
 
-    let options = options_from_args(&m);
     let inputs = input_method_from_args(&m);
 
     match m.subcommand() {
-        None => repl(inputs, roll, options)?,
+        None => repl(inputs, roll)?,
         Some(("simulate", c)) => {
             let trials = c
                 .get_one::<u64>("trials")
@@ -91,7 +89,6 @@ pub fn main() -> Result<(), Box<dyn Error + 'static>> {
                     SimulationOptions { trials },
                     DisplayOptions { height, width },
                 ),
-                options,
             )?;
         }
         _ => {}
