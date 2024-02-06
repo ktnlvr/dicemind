@@ -6,6 +6,12 @@ use std::{
 use clap::ArgMatches;
 use rustyline::error::ReadlineError;
 
+#[derive(Debug, Default, Hash, Clone, Copy)]
+pub struct DisplayOptions {
+    pub height: u32,
+    pub width: u32,
+}
+
 #[derive(Debug, Clone, Default, Copy)]
 pub struct CliOptions {
     pub seed: Option<u64>,

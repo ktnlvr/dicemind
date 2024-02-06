@@ -19,14 +19,8 @@ pub fn command() -> Command {
                 .short_flag('s')
                 .long_flag("sim")
                 .arg(
-                    arg!(-i - -iters)
-                        .value_parser(value_parser!(u64))
-                        .num_args(1)
-                        .action(ArgAction::Set),
-                )
-                .arg(
                     arg!(-t - -trials)
-                        .value_parser(value_parser!(u8))
+                        .value_parser(value_parser!(u64))
                         .num_args(1)
                         .action(ArgAction::Set),
                 )
