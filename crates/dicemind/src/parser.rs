@@ -275,7 +275,7 @@ fn parse_term_or_dice(mut chars: &[char]) -> Result<Option<(Expression, &[char])
 
         return Ok(Some((
             Expression::Dice {
-                count: term.map(Box::new),
+                amount: term.map(Box::new),
                 power,
                 augmentations: augs.collect(),
             },

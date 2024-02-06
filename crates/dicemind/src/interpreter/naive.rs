@@ -43,18 +43,18 @@ impl<R: SeedableRng + Rng> Default for NaiveRoller<R> {
 impl<R: Rng> Visitor<RollerResult<i64>> for NaiveRoller<R> {
     fn visit_dice(
         &mut self,
-        count: Option<RollerResult<i64>>,
+        amount: Option<RollerResult<i64>>,
         power: Option<RollerResult<i64>>,
         augments: SmallVec<[Augmentation; 1]>,
     ) -> RollerResult<i64> {
         let power = power.unwrap_or(try_from_positive_big_int(self.config.power()))?;
-        let count = count.unwrap_or(try_from_positive_big_int(self.config.count()))?;
+        let amount = amount.unwrap_or(try_from_positive_big_int(self.config.amount()))?;
 
         if augments.is_empty() {
-            simple_roll(&mut self.rng, count, power)
+            simple_roll(&mut self.rng, amount, power)
         } else {
             // Fallback to using verbose rolling
-            Ok(augmented_roll(&mut self.rng, count, power, augments)?
+            Ok(augmented_roll(&mut self.rng, amount, power, augments)?
                 .into_iter()
                 .map(|roll| roll.collapse())
                 .sum())

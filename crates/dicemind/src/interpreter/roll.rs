@@ -180,7 +180,7 @@ fn apply_augments(
 
 pub fn augmented_roll(
     roller: &mut impl Rng,
-    count: i64,
+    amount: i64,
     power: i64,
     augments: impl IntoIterator<Item = Augmentation>,
 ) -> Result<Vec<DiceRoll>, RollerError> {
@@ -190,7 +190,7 @@ pub fn augmented_roll(
     let augments: Vec<_> = augments.into_iter().collect();
 
     let mut i = 0;
-    while i < count {
+    while i < amount {
         let value: i64 = roller
             .gen_range(1..=power)
             .try_into()
@@ -209,20 +209,20 @@ pub fn augmented_roll(
     apply_augments(out.into_inner(), augments.into_iter())
 }
 
-pub fn simple_roll(roller: &mut impl Rng, count: i64, power: i64) -> RollerResult<i64> {
+pub fn simple_roll(roller: &mut impl Rng, amount: i64, power: i64) -> RollerResult<i64> {
     use RollerError::*;
 
-    if count == 0 || power == 0 {
+    if amount == 0 || power == 0 {
         return Ok(0);
     }
 
     let mut sum = 0i64;
 
-    for _ in 0..count.abs() {
+    for _ in 0..amount.abs() {
         let n = roller.gen_range(1..=power.abs());
         sum = sum.checked_add(n).ok_or(Overflow)?;
     }
 
     // TODO: Check these
-    Ok(sum.mul(count.signum() * power.signum()))
+    Ok(sum.mul(amount.signum() * power.signum()))
 }

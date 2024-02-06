@@ -90,23 +90,23 @@ impl<R: Rng> Visitor<RollerResult<VerboseRoll>> for VerboseRoller<R> {
 
     fn visit_dice(
         &mut self,
-        count: Option<RollerResult<VerboseRoll>>,
+        amount: Option<RollerResult<VerboseRoll>>,
         power: Option<RollerResult<VerboseRoll>>,
         augments: SmallVec<[Augmentation; 1]>,
     ) -> RollerResult<VerboseRoll> {
         let power = power
             .map(|p| p.map(|roll| roll.total().collapse()))
             .unwrap_or(try_from_positive_big_int(self.config.power()))?;
-        let count = count
+        let amount = amount
             .map(|c| c.map(|roll| roll.total().collapse()))
-            .unwrap_or(try_from_positive_big_int(self.config.count()))?;
+            .unwrap_or(try_from_positive_big_int(self.config.amount()))?;
 
         Ok(VerboseRoll {
             sum: if augments.is_empty() {
-                simple_roll(&mut self.rng, count, power)?.into()
+                simple_roll(&mut self.rng, amount, power)?.into()
             } else {
                 // Fallback to using verbose rolling
-                augmented_roll(&mut self.rng, count, power, augments)?
+                augmented_roll(&mut self.rng, amount, power, augments)?
                     .into_iter()
                     .sum::<DiceRoll>()
             },

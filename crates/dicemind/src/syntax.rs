@@ -54,7 +54,7 @@ pub type AnnotationString = SmolStr;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Expression {
     Dice {
-        count: Option<Box<Expression>>,
+        amount: Option<Box<Expression>>,
         power: Option<Box<Expression>>,
         augmentations: SmallVec<[Augmentation; 1]>,
     },
@@ -147,16 +147,16 @@ impl Display for Expression {
 
         match self {
             Dice {
-                count,
+                amount,
                 power,
                 augmentations,
             } => {
-                if let Some(c) = count {
-                    if c.is_trivial() {
-                        f.write_fmt(format_args!("{}", c))?;
+                if let Some(n) = amount {
+                    if n.is_trivial() {
+                        f.write_fmt(format_args!("{}", n))?;
                     } else {
                         f.write_char('(')?;
-                        f.write_fmt(format_args!("{}", c))?;
+                        f.write_fmt(format_args!("{}", n))?;
                         f.write_char(')')?;
                     }
                 }
