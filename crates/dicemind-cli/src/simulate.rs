@@ -59,6 +59,6 @@ pub fn print_chart<'a>(
 
         Chart::new_with_y_range(width, height, min_x as f32, max_x as f32, 0., 1.)
             .linecolorplot(&Shape::Steps(&values[..]), color.into())
-            .display();
+            .nice();
     }
 }

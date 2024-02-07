@@ -57,7 +57,7 @@ fn sim(
 ) -> Box<dyn Fn(Expression) -> Result<(), Box<dyn Error + 'static>>> {
     Box::new(move |expr: Expression| {
         let ft = simulate(expr, options)?;
-        print_chart(display, [((0, 0, 0), &ft)].into_iter());
+        print_chart(display, [((0xFF, 0xFF, 0xFF), &ft)].into_iter());
 
         Ok(())
     })

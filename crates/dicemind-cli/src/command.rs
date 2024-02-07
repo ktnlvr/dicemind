@@ -2,18 +2,6 @@ use clap::{arg, value_parser, ArgAction, Command};
 
 pub fn command() -> Command {
     Command::new("dicemind")
-        .arg(
-            arg!([EXPRS] ... "Expressions to evaluate")
-                .id("exprs")
-                .value_parser(value_parser!(String))
-                .action(ArgAction::Append),
-        )
-        .arg(
-            arg!(--seed)
-                .value_parser(value_parser!(u64))
-                .num_args(1)
-                .action(ArgAction::Set),
-        )
         .subcommand(
             Command::new("simulate")
                 .short_flag('s')
@@ -38,5 +26,17 @@ pub fn command() -> Command {
                         .num_args(1)
                         .action(ArgAction::Set),
                 ),
+        )
+        .arg(
+            arg!([EXPRS] ... "Expressions to evaluate")
+                .id("exprs")
+                .value_parser(value_parser!(String))
+                .action(ArgAction::Append),
+        )
+        .arg(
+            arg!(--seed)
+                .value_parser(value_parser!(u64))
+                .num_args(1)
+                .action(ArgAction::Set),
         )
 }
