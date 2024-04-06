@@ -6,14 +6,12 @@
 #![feature(is_sorted)]
 
 pub mod interpreter;
-mod minmax;
 pub mod parser;
 pub mod syntax;
 mod visitor;
 
 pub mod prelude {
     pub use crate::interpreter::StandardFastRoller;
-    pub use crate::parser::parse;
+    pub use crate::parser::{parse, ParsingError};
     pub use crate::syntax::Expression;
-    pub use crate::visitor::Visitor;
 }

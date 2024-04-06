@@ -6,8 +6,7 @@ use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 
 use crate::{
-    prelude::{Expression, Visitor},
-    syntax::{AnnotationString, Augmentation, BinaryOperator, Integer},
+    prelude::Expression, syntax::{AnnotationString, Augmentation, BinaryOperator, Integer}, visitor::Visitor
 };
 
 use super::{
@@ -92,23 +91,23 @@ impl<R: Rng> Visitor<RollerResult<VerboseRoll>> for VerboseRoller<R> {
 
     fn visit_dice(
         &mut self,
-        amount: Option<RollerResult<VerboseRoll>>,
+        quantity: Option<RollerResult<VerboseRoll>>,
         power: Option<RollerResult<VerboseRoll>>,
         augments: SmallVec<[Augmentation; 1]>,
     ) -> RollerResult<VerboseRoll> {
         let power = power
             .map(|p| p.map(|roll| roll.total().value()))
             .unwrap_or(try_from_positive_big_int(self.config.power()))?;
-        let amount = amount
+        let quantity = quantity
             .map(|c| c.map(|roll| roll.total().value()))
-            .unwrap_or(try_from_positive_big_int(self.config.amount()))?;
+            .unwrap_or(try_from_positive_big_int(self.config.quantity()))?;
 
         Ok(VerboseRoll {
             total: if augments.is_empty() {
-                simple_roll(&mut self.rng, amount, power)?.into()
+                simple_roll(&mut self.rng, quantity, power)?.into()
             } else {
                 // Fallback to using verbose rolling
-                augmented_roll(&mut self.rng, amount, power, augments)?
+                augmented_roll(&mut self.rng, quantity, power, augments)?
                     .into_iter()
                     .sum::<DiceRoll>()
             },

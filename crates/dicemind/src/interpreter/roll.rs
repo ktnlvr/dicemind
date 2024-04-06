@@ -2,10 +2,7 @@ use num::{CheckedAdd, CheckedMul, CheckedSub};
 use rand::Rng;
 
 use super::{RollerError, RollerResult};
-use crate::{
-    minmax::MinMax,
-    syntax::{Affix, AugmentKind, Augmentation, Integer, PositiveInteger, Selector},
-};
+use crate::syntax::{Affix, AugmentKind, Augmentation, Integer, PositiveInteger, Selector};
 
 use std::{
     iter::Sum,
@@ -75,7 +72,7 @@ impl DiceRoll {
     pub fn to_markdown_string(&self) -> String {
         if self.critical_fumble || self.critical_success {
             format!("**{}**", self.value)
-        } else{
+        } else {
             self.value.to_string()
         }
     }
@@ -187,24 +184,23 @@ fn apply_augments(
 }
 
 pub fn augmented_roll(
-    roller: &mut impl Rng,
-    amount: i64,
+    rng: &mut impl Rng,
+    quantity: i64,
     power: i64,
     augments: impl IntoIterator<Item = Augmentation>,
 ) -> Result<Vec<DiceRoll>, RollerError> {
-    // TODO: optimize the hell out of these
-    let mut out = MinMax::<DiceRoll>::default();
+    let mut out = Vec::<DiceRoll>::new();
 
     let augments: Vec<_> = augments.into_iter().collect();
 
     let mut i = 0;
-    while i < amount {
-        let value: i64 = roller
+    while i < quantity {
+        let value: i64 = rng
             .gen_range(1..=power)
             .try_into()
             .map_err(|_| RollerError::Overflow)?;
 
-        out.insort(DiceRoll {
+        out.push(DiceRoll {
             value,
             exploded: false,
             critical_fumble: false,
@@ -214,23 +210,23 @@ pub fn augmented_roll(
         i += 1;
     }
 
-    apply_augments(out.into_inner(), augments.into_iter())
+    apply_augments(out, augments.into_iter())
 }
 
-pub fn simple_roll(roller: &mut impl Rng, amount: i64, power: i64) -> RollerResult<i64> {
+pub fn simple_roll(rng: &mut impl Rng, quantity: i64, power: i64) -> RollerResult<i64> {
     use RollerError::*;
 
-    if amount == 0 || power == 0 {
+    if quantity == 0 || power == 0 {
         return Ok(0);
     }
 
     let mut sum = 0i64;
 
-    for _ in 0..amount.abs() {
-        let n = roller.gen_range(1..=power.abs());
+    for _ in 0..quantity.abs() {
+        let n = rng.gen_range(1..=power.abs());
         sum = sum.checked_add(n).ok_or(Overflow)?;
     }
 
     // TODO: Check these
-    Ok(sum.mul(amount.signum() * power.signum()))
+    Ok(sum.mul(quantity.signum() * power.signum()))
 }

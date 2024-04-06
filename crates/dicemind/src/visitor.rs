@@ -8,14 +8,14 @@ pub trait Visitor<T> {
 
         match expr {
             Dice {
-                amount,
+                quantity,
                 power,
                 augmentations,
             } => {
-                let amount = amount.map(|e| self.visit(*e));
+                let quantity = quantity.map(|e| self.visit(*e));
                 let power = power.map(|e| self.visit(*e));
 
-                self.visit_dice(amount, power, augmentations)
+                self.visit_dice(quantity, power, augmentations)
             }
             Binop { operator, lhs, rhs } => {
                 let lhs = self.visit(*lhs);
@@ -41,7 +41,7 @@ pub trait Visitor<T> {
 
     fn visit_dice(
         &mut self,
-        amount: Option<T>,
+        quantity: Option<T>,
         power: Option<T>,
         augments: SmallVec<[Augmentation; 1]>,
     ) -> T;

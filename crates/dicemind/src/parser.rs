@@ -80,7 +80,7 @@ fn parse_truncation(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
     Some((Augmentation::Truncate { kind, affix, n }, chars))
 }
 
-pub fn parse_filter(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
+fn parse_filter(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
     let kind = match chars.first()? {
         'k' => AugmentKind::Keep,
         'd' => AugmentKind::Drop,
@@ -155,7 +155,7 @@ fn parse_operator(char: char) -> Option<BinaryOperator> {
     }
 }
 
-pub fn push_operator(
+fn push_operator(
     exprs: &mut Vec<Expression>,
     operator: BinaryOperator,
 ) -> Result<(), ParsingError> {
@@ -275,7 +275,7 @@ fn parse_term_or_dice(mut chars: &[char]) -> Result<Option<(Expression, &[char])
 
         return Ok(Some((
             Expression::Dice {
-                amount: term.map(Box::new),
+                quantity: term.map(Box::new),
                 power,
                 augmentations: augs.collect(),
             },
@@ -390,14 +390,14 @@ mod tests {
     use crate::parser::{parse, BinaryOperator, ParsingError};
 
     #[test]
-    pub fn test_operator_priority() {
+    fn test_operator_priority() {
         assert!(BinaryOperator::Multiply > BinaryOperator::Subtract);
         assert!(BinaryOperator::Subtract > BinaryOperator::Add);
         assert!(BinaryOperator::Multiply > BinaryOperator::Add);
     }
 
     #[test]
-    pub fn test_missing_operator() {
+    fn test_missing_operator() {
         assert!(matches!(
             parse("2 + 3 4 + 5"),
             Err(ParsingError::MissingOperator)

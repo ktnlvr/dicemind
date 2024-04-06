@@ -54,7 +54,7 @@ pub type AnnotationString = SmolStr;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Expression {
     Dice {
-        amount: Option<Box<Expression>>,
+        quantity: Option<Box<Expression>>,
         power: Option<Box<Expression>>,
         augmentations: SmallVec<[Augmentation; 1]>,
     },
@@ -93,18 +93,18 @@ pub enum AugmentKind {
     Keep,
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash, Deserialize)]
+pub enum Affix {
+    High,
+    Low,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "Ordering")]
 enum SerdeOrdering {
     Less = -1,
     Equal = 0,
     Greater = 1,
-}
-
-#[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash, Deserialize)]
-pub enum Affix {
-    High,
-    Low,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash, Deserialize)]
@@ -147,11 +147,11 @@ impl Display for Expression {
 
         match self {
             Dice {
-                amount,
+                quantity,
                 power,
                 augmentations,
             } => {
-                if let Some(n) = amount {
+                if let Some(n) = quantity {
                     if n.is_trivial() {
                         f.write_fmt(format_args!("{}", n))?;
                     } else {
