@@ -1,5 +1,13 @@
 # dicemind
 
+## Crates
+
+### dicemind
+
+### dicemind-cli
+
+### dicemind-web
+
 ## Syntax
 
 ### Arithmetic

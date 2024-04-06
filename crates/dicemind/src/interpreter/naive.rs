@@ -56,7 +56,7 @@ impl<R: Rng> Visitor<RollerResult<i64>> for NaiveRoller<R> {
             // Fallback to using verbose rolling
             Ok(augmented_roll(&mut self.rng, amount, power, augments)?
                 .into_iter()
-                .map(|roll| roll.collapse())
+                .map(|roll| roll.value())
                 .sum())
         }
     }

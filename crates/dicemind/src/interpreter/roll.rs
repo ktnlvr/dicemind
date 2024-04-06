@@ -68,8 +68,16 @@ impl PartialOrd for DiceRoll {
 }
 
 impl DiceRoll {
-    pub fn collapse(&self) -> i64 {
+    pub fn value(&self) -> i64 {
         self.value
+    }
+
+    pub fn to_markdown_string(&self) -> String {
+        if self.critical_fumble || self.critical_success {
+            format!("**{}**", self.value)
+        } else{
+            self.value.to_string()
+        }
     }
 }
 
@@ -158,12 +166,12 @@ fn apply_augments(
                 let n = try_from_positive_big_int(n)?;
 
                 let predicate: Box<dyn Fn(&mut DiceRoll) -> bool> = match (kind, relation) {
-                    (Drop, Less) => Box::new(|x| x.collapse() < n),
-                    (Drop, Equal) => Box::new(|x| x.collapse() == n),
-                    (Drop, Greater) => Box::new(|x| x.collapse() > n),
-                    (Keep, Less) => Box::new(|x| x.collapse() >= n),
-                    (Keep, Equal) => Box::new(|x| x.collapse() != n),
-                    (Keep, Greater) => Box::new(|x| x.collapse() <= n),
+                    (Drop, Less) => Box::new(|x| x.value() < n),
+                    (Drop, Equal) => Box::new(|x| x.value() == n),
+                    (Drop, Greater) => Box::new(|x| x.value() > n),
+                    (Keep, Less) => Box::new(|x| x.value() >= n),
+                    (Keep, Equal) => Box::new(|x| x.value() != n),
+                    (Keep, Greater) => Box::new(|x| x.value() <= n),
                 };
 
                 let _: Vec<_> = rolls.extract_if(predicate).collect();

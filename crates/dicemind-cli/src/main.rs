@@ -42,7 +42,7 @@ fn roll(expr: Expression) -> Result<(), Box<dyn Error + 'static>> {
             annotations
                 .into_iter()
                 .for_each(|(note, (expr, DiceRoll { value, .. }))| {
-                    println!("{expr} [{note}] = {value}")
+                    println!("[{note}] {expr} = {value}")
                 });
         }
         Err(err) => println!("err. {err}"),

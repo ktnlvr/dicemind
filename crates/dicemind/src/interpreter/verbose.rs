@@ -17,13 +17,13 @@ use super::{
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VerboseRoll {
-    sum: DiceRoll,
+    total: DiceRoll,
     annotated_results: HashMap<AnnotationString, (Expression, DiceRoll)>,
 }
 
 impl VerboseRoll {
     pub fn total(&self) -> DiceRoll {
-        self.sum
+        self.total
     }
 
     pub fn annotated_results(
@@ -33,7 +33,7 @@ impl VerboseRoll {
     }
 
     pub fn into_inner(self) -> (DiceRoll, HashMap<AnnotationString, (Expression, DiceRoll)>) {
-        (self.sum, self.annotated_results)
+        (self.total, self.annotated_results)
     }
 }
 
@@ -66,24 +66,26 @@ impl<R: SeedableRng + Rng> VerboseRoller<R> {
             rng: R::seed_from_u64(seed),
         }
     }
+
+    pub fn new() -> Self {
+        Self::default()
+    }
 }
 
 impl<R: Rng> Visitor<RollerResult<VerboseRoll>> for VerboseRoller<R> {
     fn visit_negation(&mut self, value: RollerResult<VerboseRoll>) -> RollerResult<VerboseRoll> {
         let VerboseRoll {
-            sum: total,
+            total,
             annotated_results,
         } = value?;
 
         let total = DiceRoll {
             value: total.value.checked_neg().ok_or(RollerError::Overflow)?,
-            exploded: total.exploded,
-            critical_fumble: total.critical_fumble,
-            critical_success: total.critical_success,
+            ..total
         };
 
         Ok(VerboseRoll {
-            sum: total,
+            total,
             annotated_results,
         })
     }
@@ -95,14 +97,14 @@ impl<R: Rng> Visitor<RollerResult<VerboseRoll>> for VerboseRoller<R> {
         augments: SmallVec<[Augmentation; 1]>,
     ) -> RollerResult<VerboseRoll> {
         let power = power
-            .map(|p| p.map(|roll| roll.total().collapse()))
+            .map(|p| p.map(|roll| roll.total().value()))
             .unwrap_or(try_from_positive_big_int(self.config.power()))?;
         let amount = amount
-            .map(|c| c.map(|roll| roll.total().collapse()))
+            .map(|c| c.map(|roll| roll.total().value()))
             .unwrap_or(try_from_positive_big_int(self.config.amount()))?;
 
         Ok(VerboseRoll {
-            sum: if augments.is_empty() {
+            total: if augments.is_empty() {
                 simple_roll(&mut self.rng, amount, power)?.into()
             } else {
                 // Fallback to using verbose rolling
@@ -117,7 +119,7 @@ impl<R: Rng> Visitor<RollerResult<VerboseRoll>> for VerboseRoller<R> {
     fn visit_constant(&mut self, c: Integer) -> RollerResult<VerboseRoll> {
         let constant = try_from_big_int::<i64>(c)?;
         Ok(VerboseRoll {
-            sum: DiceRoll::from(constant),
+            total: DiceRoll::from(constant),
             ..Default::default()
         })
     }
@@ -130,11 +132,11 @@ impl<R: Rng> Visitor<RollerResult<VerboseRoll>> for VerboseRoller<R> {
     ) -> RollerResult<VerboseRoll> {
         use BinaryOperator::*;
         let VerboseRoll {
-            sum: t_lhs,
+            total: t_lhs,
             annotated_results: mut annotations_lhs,
         } = lhs?;
         let VerboseRoll {
-            sum: t_rhs,
+            total: t_rhs,
             annotated_results: annotations_rhs,
         } = rhs?;
 
@@ -148,19 +150,19 @@ impl<R: Rng> Visitor<RollerResult<VerboseRoll>> for VerboseRoller<R> {
             LessThan => todo!(),
             GreaterThan => todo!(),
             Add => Ok(VerboseRoll {
-                sum: t_lhs.checked_add(&t_rhs).ok_or(RollerError::Overflow)?,
+                total: t_lhs.checked_add(&t_rhs).ok_or(RollerError::Overflow)?,
                 annotated_results,
             }),
             Subtract => Ok(VerboseRoll {
-                sum: t_lhs.checked_sub(&t_rhs).ok_or(RollerError::Overflow)?,
+                total: t_lhs.checked_sub(&t_rhs).ok_or(RollerError::Overflow)?,
                 annotated_results,
             }),
             Multiply => Ok(VerboseRoll {
-                sum: t_lhs.checked_mul(&t_rhs).ok_or(RollerError::Overflow)?,
+                total: t_lhs.checked_mul(&t_rhs).ok_or(RollerError::Overflow)?,
                 annotated_results,
             }),
             Chain => Ok(VerboseRoll {
-                sum: t_rhs,
+                total: t_rhs,
                 annotated_results,
             }),
         }
@@ -173,7 +175,7 @@ impl<R: Rng> Visitor<RollerResult<VerboseRoll>> for VerboseRoller<R> {
     ) -> RollerResult<VerboseRoll> {
         let mut roll = self.visit(expr.clone())?;
         roll.annotated_results
-            .insert(annotation, (expr, roll.sum.clone()));
+            .insert(annotation, (expr, roll.total.clone()));
         Ok(roll)
     }
 }
