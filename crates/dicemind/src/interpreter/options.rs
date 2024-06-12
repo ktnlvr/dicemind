@@ -3,13 +3,13 @@ use serde::{Deserialize, Serialize};
 use crate::syntax::PositiveInteger;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct RollerConfig {
+pub struct RollerOptions {
     assumed_quantity: PositiveInteger,
     assumed_power: PositiveInteger,
     chain_explosions: bool,
 }
 
-impl Default for RollerConfig {
+impl Default for RollerOptions {
     fn default() -> Self {
         Self {
             assumed_quantity: 1u32.into(),
@@ -19,7 +19,7 @@ impl Default for RollerConfig {
     }
 }
 
-impl RollerConfig {
+impl RollerOptions {
     pub fn chain_explosions(&self) -> bool {
         return self.chain_explosions
     }

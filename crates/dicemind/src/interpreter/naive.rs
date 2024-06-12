@@ -9,7 +9,7 @@ use crate::{
     visitor::Visitor,
 };
 
-use super::{RollerConfig, RollerResult};
+use super::{RollerOptions, RollerResult};
 
 fn roll_one(rng: &mut impl Rng, power: i64) -> TaggedDiceRoll {
     if power == 0 {
@@ -213,14 +213,14 @@ pub type NaiveResult = RollerResult<NaiveValue>;
 
 #[derive(Debug, Clone)]
 pub struct NaiveRoller<R: Rng = StdRng> {
-    config: RollerConfig,
+    options: RollerOptions,
     rng: R,
 }
 
 impl<R: SeedableRng + Rng> NaiveRoller<R> {
     pub fn new_seeded(seed: u64) -> Self {
         Self {
-            config: Default::default(),
+            options: Default::default(),
             rng: R::seed_from_u64(seed),
         }
     }
@@ -229,7 +229,7 @@ impl<R: SeedableRng + Rng> NaiveRoller<R> {
 impl<R: SeedableRng + Rng> Default for NaiveRoller<R> {
     fn default() -> Self {
         Self {
-            config: Default::default(),
+            options: Default::default(),
             rng: R::from_entropy(),
         }
     }
@@ -298,13 +298,13 @@ impl<R: Rng> Visitor<NaiveResult> for NaiveRoller<R> {
 
     fn default_power(&self) -> NaiveResult {
         Ok(NaiveValue::Constant(
-            i64::try_from(self.config.power()).unwrap(),
+            i64::try_from(self.options.power()).unwrap(),
         ))
     }
 
     fn default_quantity(&self) -> NaiveResult {
         Ok(NaiveValue::Constant(
-            i64::try_from(self.config.quantity()).unwrap(),
+            i64::try_from(self.options.quantity()).unwrap(),
         ))
     }
 }

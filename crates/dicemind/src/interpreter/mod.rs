@@ -1,7 +1,7 @@
 mod naive;
-mod config;
+mod options;
 mod error;
 
 pub use naive::*;
-pub use config::*;
+pub use options::*;
 pub use error::*;
