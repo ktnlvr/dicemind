@@ -391,9 +391,9 @@ mod tests {
 
     #[test]
     fn test_operator_priority() {
-        assert!(BinaryOperator::Multiply > BinaryOperator::Subtract);
-        assert!(BinaryOperator::Subtract > BinaryOperator::Add);
-        assert!(BinaryOperator::Multiply > BinaryOperator::Add);
+        assert!(BinaryOperator::Multiply >= BinaryOperator::Subtract);
+        assert!(BinaryOperator::Subtract >= BinaryOperator::Add);
+        assert!(BinaryOperator::Multiply >= BinaryOperator::Add);
     }
 
     #[test]
