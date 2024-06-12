@@ -1,10 +1,7 @@
 #![feature(coroutines, coroutine_trait, iter_from_coroutine)]
 
 use defaults::{DEFAULT_HEIGHT, DEFAULT_TRIALS, DEFAULT_WIDTH};
-use dicemind::{
-    interpreter::{DiceRoll, StandardVerboseRoller, VerboseRoll},
-    prelude::*,
-};
+use dicemind::prelude::*;
 use human_panic::setup_panic;
 use simulate::{print_chart, SimulationOptions};
 use std::error::Error;
