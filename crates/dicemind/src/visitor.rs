@@ -39,28 +39,6 @@ pub trait Visitor<T> {
 
     fn visit_negation(&mut self, value: T) -> T;
 
-    #[deprecated]
-    fn visit_dice_OLD(
-        &mut self,
-        quantity: Option<T>,
-        power: Option<T>,
-        augments: SmallVec<[Augmentation; 1]>,
-    ) -> T {
-        self.visit_dice(
-            quantity.unwrap_or_else(|| self.default_quantity()),
-            power.unwrap_or_else(|| self.default_power()),
-            augments,
-        )
-    }
-
-    fn default_quantity(&self) -> T {
-        todo!()
-    }
-
-    fn default_power(&self) -> T {
-        todo!()
-    }
-
     fn visit_dice(
         &mut self,
         quantity: T,
@@ -79,4 +57,8 @@ pub trait Visitor<T> {
     fn visit_subexpression(&mut self, subexpr: Expression) -> T {
         self.visit(subexpr)
     }
+
+    fn default_quantity(&self) -> T;
+
+    fn default_power(&self) -> T;
 }
