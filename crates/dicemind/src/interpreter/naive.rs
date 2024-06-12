@@ -1,3 +1,5 @@
+use std::{collections::HashSet, hash::RandomState};
+
 use num::BigUint;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use smallvec::SmallVec;
@@ -5,7 +7,7 @@ use smallvec::SmallVec;
 use crate::{
     interpreter::RollerError,
     prelude::Expression,
-    syntax::{Augmentation, BinaryOperator, Integer, Selector, SelectorOp},
+    syntax::{Affix, Augmentation, BinaryOperator, Integer, Selector, SelectorOp},
     visitor::Visitor,
 };
 
@@ -62,11 +64,10 @@ pub fn should_selector_discard(n: i64, selector: Selector, op: SelectorOp) -> bo
     return false;
 }
 
-fn optional_big_uint_to_usize(n: Option<BigUint>) -> usize {
-    n
-    .map(|n| usize::try_from(n).ok())
-    .flatten()
-    .unwrap_or(usize::MAX)
+fn optional_big_uint_to_usize_or_1(n: Option<BigUint>) -> usize {
+    n.map(|n| usize::try_from(n).ok())
+        .flatten()
+        .unwrap_or(1usize)
 }
 
 fn augment(
@@ -77,7 +78,30 @@ fn augment(
     for augment in augments {
         match augment {
             Augmentation::Truncate { op, affix, n } => {
-                let n = optional_big_uint_to_usize(n);
+                let n = optional_big_uint_to_usize_or_1(n);
+
+                let mut indices_high_to_low = Vec::<usize>::with_capacity(n);
+                for (i, _) in dice.iter().enumerate() {
+                    let (Ok(idx) | Err(idx)) = indices_high_to_low.binary_search_by(|j| dice[*j].cmp(&dice[i]));
+                    indices_high_to_low.insert(idx, i);
+                }
+
+                use SelectorOp::*;
+                use Affix::*;
+
+                // Keeping high is the same as dropping low
+                // Keeping low is the same as dropping high
+                match (op, affix) {
+                    (Keep, Low) | (Drop, High) => {},
+                    (Keep, High) | (Drop, Low) => indices_high_to_low.reverse(),
+                }
+                let keep_indices = HashSet::<_, RandomState>::from_iter(indices_high_to_low.into_iter().take(n));
+
+                for (i, d) in dice.iter_mut().enumerate() {
+                    if !keep_indices.contains(&i) {
+                        d.discard();
+                    }
+                }
             }
             Augmentation::Filter { op, selector } => {
                 for d in &mut dice {
@@ -87,8 +111,8 @@ fn augment(
                 }
             }
             Augmentation::Emphasis { n } => {
-                let n = optional_big_uint_to_usize(n);
-            },
+                let n = optional_big_uint_to_usize_or_1(n);
+            }
             Augmentation::Explode { selector } => {}
         }
     }
