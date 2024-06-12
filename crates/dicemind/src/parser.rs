@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::syntax::{
-    Affix, AnnotationString, AugmentKind, Augmentation, BinaryOperator, Expression, PositiveInteger, Selector
+    Affix, AnnotationString, SelectorOp, Augmentation, BinaryOperator, Expression, PositiveInteger, Selector
 };
 
 #[derive(Debug, Error, Clone, Serialize, Deserialize, Copy, Hash, PartialEq, Eq)]
@@ -59,8 +59,8 @@ fn parse_augment_emphasis(mut chars: &[char]) -> Option<(Augmentation, &[char])>
 
 fn parse_truncation(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
     let kind = match chars.first()? {
-        'k' => AugmentKind::Keep,
-        'd' => AugmentKind::Drop,
+        'k' => SelectorOp::Keep,
+        'd' => SelectorOp::Drop,
         _ => return None,
     };
 
@@ -77,13 +77,13 @@ fn parse_truncation(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
         n
     });
 
-    Some((Augmentation::Truncate { kind, affix, n }, chars))
+    Some((Augmentation::Truncate { op: kind, affix, n }, chars))
 }
 
 fn parse_filter(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
     let kind = match chars.first()? {
-        'k' => AugmentKind::Keep,
-        'd' => AugmentKind::Drop,
+        'k' => SelectorOp::Keep,
+        'd' => SelectorOp::Drop,
         _ => return None,
     };
 
@@ -94,7 +94,7 @@ fn parse_filter(mut chars: &[char]) -> Option<(Augmentation, &[char])> {
         n
     })?;
 
-    Some((Augmentation::Filter { kind, selector }, chars))
+    Some((Augmentation::Filter { op: kind, selector }, chars))
 }
 
 fn parse_augments(mut chars: &[char]) -> (impl Iterator<Item = Augmentation>, &[char]) {

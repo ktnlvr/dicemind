@@ -88,7 +88,7 @@ impl Expression {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash, Copy, Deserialize)]
-pub enum AugmentKind {
+pub enum SelectorOp {
     Drop,
     Keep,
 }
@@ -114,17 +114,29 @@ pub struct Selector {
     pub n: PositiveInteger,
 }
 
+impl Selector {
+    pub fn matches(&self, m: i64) -> bool {
+        let n = match i64::try_from(&self.n) {
+            Ok(n) => n,
+            // value too big or too small, can be handled without an error
+            Err(_) => todo!()
+        };
+
+        m.cmp(&n) == self.relation
+    }
+}
+
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash, Deserialize)]
 pub enum Augmentation {
     // kh4 kl2
     Truncate {
-        kind: AugmentKind,
+        op: SelectorOp,
         affix: Affix,
         n: Option<PositiveInteger>,
     },
     // d<2 k=3
     Filter {
-        kind: AugmentKind,
+        op: SelectorOp,
         selector: Selector,
     },
     // e

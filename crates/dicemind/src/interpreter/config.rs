@@ -6,6 +6,7 @@ use crate::syntax::PositiveInteger;
 pub struct RollerConfig {
     assumed_quantity: PositiveInteger,
     assumed_power: PositiveInteger,
+    chain_explosions: bool,
 }
 
 impl Default for RollerConfig {
@@ -13,11 +14,16 @@ impl Default for RollerConfig {
         Self {
             assumed_quantity: 1u32.into(),
             assumed_power: 6u32.into(),
+            chain_explosions: false,
         }
     }
 }
 
 impl RollerConfig {
+    pub fn chain_explosions(&self) -> bool {
+        return self.chain_explosions
+    }
+
     pub fn quantity(&self) -> PositiveInteger {
         self.assumed_quantity.clone()
     }

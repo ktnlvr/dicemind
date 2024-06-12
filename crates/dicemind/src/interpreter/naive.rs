@@ -1,10 +1,11 @@
+use num::BigUint;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use smallvec::SmallVec;
 
 use crate::{
     interpreter::RollerError,
     prelude::Expression,
-    syntax::{Augmentation, BinaryOperator, Integer},
+    syntax::{Augmentation, BinaryOperator, Integer, Selector, SelectorOp},
     visitor::Visitor,
 };
 
@@ -43,13 +44,66 @@ fn roll_many(
     dice.into_iter()
 }
 
+pub fn should_selector_discard(n: i64, selector: Selector, op: SelectorOp) -> bool {
+    let matches = selector.matches(n);
+    let keep = op == SelectorOp::Keep;
+
+    // TODO: make prettier and more readable
+    if keep {
+        if !matches {
+            return true;
+        }
+    } else {
+        if matches {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+fn optional_big_uint_to_usize(n: Option<BigUint>) -> usize {
+    n
+    .map(|n| usize::try_from(n).ok())
+    .flatten()
+    .unwrap_or(usize::MAX)
+}
+
+fn augment(
+    mut dice: Vec<TaggedDiceRoll>,
+    augments: impl Iterator<Item = Augmentation>,
+    power: i64,
+) -> RollerResult<Vec<TaggedDiceRoll>> {
+    for augment in augments {
+        match augment {
+            Augmentation::Truncate { op, affix, n } => {
+                let n = optional_big_uint_to_usize(n);
+            }
+            Augmentation::Filter { op, selector } => {
+                for d in &mut dice {
+                    if should_selector_discard(d.value, selector.clone(), op) {
+                        d.discard();
+                    }
+                }
+            }
+            Augmentation::Emphasis { n } => {
+                let n = optional_big_uint_to_usize(n);
+            },
+            Augmentation::Explode { selector } => {}
+        }
+    }
+
+    Ok(dice)
+}
+
 bitflags::bitflags! {
     #[derive(Clone, Copy, Default, Debug)]
     pub struct DiceRollTag: u32 {
         const FAIL = 1 << 0;
         const SUCCESS = 1 << 1;
-        const EXPLOSION = 1 << 2;
-        const DISCARDED = 1 << 3;
+        const EXPLODES = 1 << 2;
+        const EXPLOSION = 1 << 3;
+        const DISCARDED = 1 << 4;
     }
 }
 
@@ -57,6 +111,26 @@ bitflags::bitflags! {
 pub struct TaggedDiceRoll {
     pub tag: DiceRollTag,
     pub value: i64,
+}
+
+impl Eq for TaggedDiceRoll {}
+
+impl PartialEq for TaggedDiceRoll {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+impl PartialOrd for TaggedDiceRoll {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.value.cmp(&other.value))
+    }
+}
+
+impl Ord for TaggedDiceRoll {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.value.cmp(&other.value)
+    }
 }
 
 impl From<i64> for TaggedDiceRoll {
@@ -93,12 +167,16 @@ impl TaggedDiceRoll {
         self
     }
 
-    fn with_explosion_on(mut self, explode: i64) -> Self {
+    fn with_exploding_on(mut self, explode: i64) -> Self {
         if self.value == explode {
-            self.tag |= DiceRollTag::EXPLOSION;
+            self.tag |= DiceRollTag::EXPLODES;
         }
 
         self
+    }
+
+    fn exploded(&mut self) {
+        self.tag |= DiceRollTag::EXPLOSION;
     }
 
     fn discard(&mut self) {
@@ -177,7 +255,8 @@ impl<R: Rng> Visitor<NaiveResult> for NaiveRoller<R> {
         if augments.is_empty() {
             Ok(NaiveValue::Dice(dice_rolls))
         } else {
-            todo!()
+            augment(dice_rolls.into_vec(), augments.into_iter(), power)
+                .map(|dice| NaiveValue::Dice(dice.into_iter().collect()))
         }
     }
 
@@ -218,10 +297,14 @@ impl<R: Rng> Visitor<NaiveResult> for NaiveRoller<R> {
     }
 
     fn default_power(&self) -> NaiveResult {
-        Ok(NaiveValue::Constant(i64::try_from(self.config.power()).unwrap()))
+        Ok(NaiveValue::Constant(
+            i64::try_from(self.config.power()).unwrap(),
+        ))
     }
 
     fn default_quantity(&self) -> NaiveResult {
-        Ok(NaiveValue::Constant(i64::try_from(self.config.quantity()).unwrap()))
+        Ok(NaiveValue::Constant(
+            i64::try_from(self.config.quantity()).unwrap(),
+        ))
     }
 }
