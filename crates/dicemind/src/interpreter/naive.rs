@@ -6,12 +6,12 @@ use smallvec::SmallVec;
 
 use crate::{
     interpreter::RollerError,
-    prelude::Expression,
+    prelude::{Expression, RollerOptions},
     syntax::{Affix, Augmentation, BinaryOperator, Integer, Selector, SelectorOp},
     visitor::Visitor,
 };
 
-use super::{RollerOptions, RollerResult};
+use super::RollerResult;
 
 fn roll_one(rng: &mut impl Rng, power: i64) -> TaggedDiceRoll {
     if power == 0 {
