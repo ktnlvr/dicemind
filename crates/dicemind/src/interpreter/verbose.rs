@@ -89,7 +89,7 @@ impl<R: Rng> Visitor<RollerResult<VerboseRoll>> for VerboseRoller<R> {
         })
     }
 
-    fn visit_dice(
+    fn visit_dice_OLD(
         &mut self,
         quantity: Option<RollerResult<VerboseRoll>>,
         power: Option<RollerResult<VerboseRoll>>,
@@ -176,5 +176,14 @@ impl<R: Rng> Visitor<RollerResult<VerboseRoll>> for VerboseRoller<R> {
         roll.annotated_results
             .insert(annotation, (expr, roll.total.clone()));
         Ok(roll)
+    }
+    
+    fn visit_dice(
+        &mut self,
+        quantity: RollerResult<VerboseRoll>,
+        power: RollerResult<VerboseRoll>,
+        augments: SmallVec<[Augmentation; 1]>,
+    ) -> RollerResult<VerboseRoll> {
+        todo!()
     }
 }

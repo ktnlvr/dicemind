@@ -1,5 +1,3 @@
-use std::iter::Sum;
-
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use smallvec::SmallVec;
 
@@ -10,7 +8,7 @@ use crate::{
     visitor::Visitor,
 };
 
-use super::{try_from_big_int, try_from_positive_big_int, RollerConfig, RollerResult};
+use super::{RollerConfig, RollerResult};
 
 fn roll_one(rng: &mut impl Rng, power: i64) -> TaggedDiceRoll {
     if power == 0 {
@@ -84,7 +82,7 @@ impl TaggedDiceRoll {
     }
 
     fn with_fail_on_1(mut self) -> Self {
-        self.with_success_on(1)
+        self.with_fail_on(1)
     }
 
     fn with_fail_on(mut self, fail: i64) -> Self {
@@ -109,6 +107,31 @@ impl TaggedDiceRoll {
 }
 
 pub type StandardNaiveRoller = NaiveRoller;
+
+#[derive(Debug)]
+pub enum NaiveValue {
+    Constant(i64),
+    Dice(SmallVec<[TaggedDiceRoll; 1]>),
+}
+
+impl Default for NaiveValue {
+    fn default() -> Self {
+        Self::Constant(0)
+    }
+}
+
+impl NaiveValue {
+    fn total(&self) -> i64 {
+        match self {
+            NaiveValue::Constant(c) => *c,
+            NaiveValue::Dice(dice) => dice
+                .iter()
+                .fold(0, |acc, TaggedDiceRoll { value, .. }| acc + value),
+        }
+    }
+}
+
+pub type NaiveResult = RollerResult<NaiveValue>;
 
 #[derive(Debug, Clone)]
 pub struct NaiveRoller<R: Rng = StdRng> {
@@ -135,66 +158,71 @@ impl<R: SeedableRng + Rng> Default for NaiveRoller<R> {
 }
 
 impl<R: Rng> NaiveRoller<R> {
-    pub fn roll(&mut self, expr: Expression) -> RollerResult<Vec<TaggedDiceRoll>> {
+    pub fn roll(&mut self, expr: Expression) -> NaiveResult {
         self.visit(expr)
     }
 }
 
-impl<R: Rng> Visitor<RollerResult<Vec<TaggedDiceRoll>>> for NaiveRoller<R> {
-    fn visit_dice_UPDATED(
+impl<R: Rng> Visitor<NaiveResult> for NaiveRoller<R> {
+    fn visit_dice(
         &mut self,
-        quantity: RollerResult<Vec<TaggedDiceRoll>>,
-        power: RollerResult<Vec<TaggedDiceRoll>>,
+        quantity: NaiveResult,
+        power: NaiveResult,
         augments: SmallVec<[Augmentation; 1]>,
-    ) -> RollerResult<Vec<TaggedDiceRoll>> {
-        let power = power?.into_iter().fold(0, |acc, roll| acc + roll.value);
-        let quantity = quantity?.into_iter().fold(0, |acc, roll| acc + roll.value);
+    ) -> NaiveResult {
+        let power = power?.total();
+        let quantity = quantity?.total();
 
+        let dice_rolls = roll_many(&mut self.rng, quantity, power).collect();
         if augments.is_empty() {
-            Ok(roll_many(&mut self.rng, quantity, power).collect())
+            Ok(NaiveValue::Dice(dice_rolls))
         } else {
             todo!()
         }
     }
 
-    fn visit_constant(&mut self, c: Integer) -> RollerResult<Vec<TaggedDiceRoll>> {
-        Ok(vec![TaggedDiceRoll::from(i64::try_from(c).unwrap())])
+    fn visit_constant(&mut self, c: Integer) -> NaiveResult {
+        Ok(NaiveValue::Constant(i64::try_from(c).unwrap()))
     }
 
     fn visit_binop(
         &mut self,
         op: BinaryOperator,
-        lhs: RollerResult<Vec<TaggedDiceRoll>>,
-        rhs: RollerResult<Vec<TaggedDiceRoll>>,
-    ) -> RollerResult<Vec<TaggedDiceRoll>> {
+        lhs: NaiveResult,
+        rhs: NaiveResult,
+    ) -> NaiveResult {
         use BinaryOperator::*;
         use RollerError::*;
 
-        if op == Chain {
-            return rhs;
-        }
+        let lhs = lhs?;
+        let rhs = rhs?;
 
-        let lhs = lhs?.into_iter().fold(0, |acc, roll| acc + roll.value);
-        let rhs = rhs?.into_iter().fold(0, |acc, roll| acc + roll.value);
+        let lhs_total = lhs.total();
+        let rhs_total = rhs.total();
 
-        let from_int = |x: i64| Ok(vec![TaggedDiceRoll::from(x)]);
+        let from_int = |x: i64| Ok(NaiveValue::Constant(x));
 
         match op {
-            Equals => from_int((lhs == rhs) as i64),
-            LessThan => from_int((lhs < rhs) as i64),
-            GreaterThan => from_int((lhs > rhs) as i64),
-            Add => from_int(lhs.checked_add(rhs).ok_or(Overflow)?),
-            Subtract => from_int(lhs.checked_sub(rhs).ok_or(Overflow)?),
-            Multiply => from_int(lhs.checked_mul(rhs).ok_or(Overflow)?),
-            Chain => unreachable!(),
+            Equals => from_int((lhs_total == rhs_total) as i64),
+            LessThan => from_int((lhs_total < rhs_total) as i64),
+            GreaterThan => from_int((lhs_total > rhs_total) as i64),
+            Add => from_int(lhs_total.checked_add(rhs_total).ok_or(Overflow)?),
+            Subtract => from_int(lhs_total.checked_sub(rhs_total).ok_or(Overflow)?),
+            Multiply => from_int(lhs_total.checked_mul(rhs_total).ok_or(Overflow)?),
+            Chain => Ok(rhs),
         }
     }
 
-    fn visit_negation(
-        &mut self,
-        value: RollerResult<Vec<TaggedDiceRoll>>,
-    ) -> RollerResult<Vec<TaggedDiceRoll>> {
-        todo!()
+    fn visit_negation(&mut self, value: NaiveResult) -> NaiveResult {
+        value.map(|value| NaiveValue::Constant(-value.total()))
+    }
+
+    fn default_power(&self) -> NaiveResult {
+        Ok(NaiveValue::Constant(i64::try_from(self.config.power()).unwrap()))
+    }
+
+    fn default_quantity(&self) -> NaiveResult {
+        Ok(NaiveValue::Constant(i64::try_from(self.config.quantity()).unwrap()))
     }
 }
 

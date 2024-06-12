@@ -12,8 +12,8 @@ pub trait Visitor<T> {
                 power,
                 augmentations,
             } => {
-                let quantity = quantity.map(|e| self.visit(*e));
-                let power = power.map(|e| self.visit(*e));
+                let quantity = quantity.map(|e| self.visit(*e)).unwrap_or_else(|| self.default_quantity());
+                let power = power.map(|e| self.visit(*e)).unwrap_or_else(|| self.default_power());
 
                 self.visit_dice(quantity, power, augmentations)
             }
@@ -39,23 +39,34 @@ pub trait Visitor<T> {
 
     fn visit_negation(&mut self, value: T) -> T;
 
-    fn visit_dice(
+    #[deprecated]
+    fn visit_dice_OLD(
         &mut self,
         quantity: Option<T>,
         power: Option<T>,
         augments: SmallVec<[Augmentation; 1]>,
     ) -> T {
-        self.visit_dice_UPDATED(quantity.unwrap(), power.unwrap(), augments)
+        self.visit_dice(
+            quantity.unwrap_or_else(|| self.default_quantity()),
+            power.unwrap_or_else(|| self.default_power()),
+            augments,
+        )
     }
 
-    fn visit_dice_UPDATED(
+    fn default_quantity(&self) -> T {
+        todo!()
+    }
+
+    fn default_power(&self) -> T {
+        todo!()
+    }
+
+    fn visit_dice(
         &mut self,
         quantity: T,
         power: T,
         augments: SmallVec<[Augmentation; 1]>,
-    ) -> T {
-        unimplemented!()
-    }
+    ) -> T;
 
     fn visit_constant(&mut self, c: Integer) -> T;
 

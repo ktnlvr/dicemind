@@ -33,20 +33,9 @@ fn repl(
 }
 
 fn roll(expr: Expression) -> Result<(), Box<dyn Error + 'static>> {
-    let mut fast_roller = StandardVerboseRoller::default();
+    let mut fast_roller = StandardNaiveRoller::default();
 
-    match fast_roller.roll(expr.clone()).map(VerboseRoll::into_inner) {
-        Ok((sum, annotations)) => {
-            let DiceRoll { value, .. } = sum;
-            println!("ok. {value}");
-            annotations
-                .into_iter()
-                .for_each(|(note, (expr, DiceRoll { value, .. }))| {
-                    println!("[{note}] {expr} = {value}")
-                });
-        }
-        Err(err) => println!("err. {err}"),
-    };
+    println!("{:?}", fast_roller.roll(expr));
 
     Ok(())
 }
