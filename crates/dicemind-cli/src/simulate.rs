@@ -1,6 +1,6 @@
 use std::{collections::HashMap, error::Error};
 
-use dicemind::{interpreter::StandardFastRoller, syntax::Expression};
+use dicemind::{interpreter::StandardNaiveRoller, syntax::Expression};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use textplots::{Chart, ColorPlot, Shape};
 
@@ -9,33 +9,6 @@ use crate::DisplayOptions;
 #[derive(Debug, Default, Hash, PartialEq, Clone, Copy)]
 pub struct SimulationOptions {
     pub trials: u64,
-}
-
-pub fn simulate(
-    expr: Expression,
-    opts: SimulationOptions,
-) -> Result<Vec<(i64, i64)>, Box<dyn Error + 'static>> {
-    let SimulationOptions { trials } = opts;
-    let values = (0..trials)
-        .into_par_iter()
-        .map(|_| StandardFastRoller::default().roll(expr.clone()).unwrap())
-        .fold_with(HashMap::<i64, i64>::new(), |mut values, n| {
-            *values.entry(n).or_insert_with(|| 0) += 1;
-            values
-        })
-        .reduce_with(|mut a, b| {
-            for (k, u) in b.into_iter() {
-                let v = a.entry(k).or_insert_with(|| 0);
-                *v += u;
-            }
-            a
-        })
-        .unwrap_or_default();
-
-    let mut values: Vec<_> = values.into_iter().collect();
-    values.sort_unstable_by_key(|(a, _)| *a);
-
-    Ok(values)
 }
 
 pub fn print_chart<'a>(

@@ -10,7 +10,7 @@ use crate::{
 };
 
 use super::{
-    augmented_roll, simple_roll, try_from_big_int, try_from_positive_big_int, DiceRoll,
+    augmented_roll, fast_roll_many, try_from_big_int, try_from_positive_big_int, DiceRoll,
     RollerConfig, RollerError, RollerResult,
 };
 
@@ -104,7 +104,7 @@ impl<R: Rng> Visitor<RollerResult<VerboseRoll>> for VerboseRoller<R> {
 
         Ok(VerboseRoll {
             total: if augments.is_empty() {
-                simple_roll(&mut self.rng, quantity, power)?.into()
+                fast_roll_many(&mut self.rng, quantity, power)?.into()
             } else {
                 // Fallback to using verbose rolling
                 augmented_roll(&mut self.rng, quantity, power, augments)?

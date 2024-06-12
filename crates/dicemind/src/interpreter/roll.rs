@@ -11,6 +11,8 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
+use std::fmt::Debug;
+
 pub(crate) fn try_from_positive_big_int<T: TryFrom<PositiveInteger>>(
     value: PositiveInteger,
 ) -> RollerResult<T> {
@@ -23,6 +25,26 @@ pub(crate) fn try_from_big_int<T: TryFrom<Integer>>(value: Integer) -> RollerRes
     T::try_from(value.clone()).map_err(|_| RollerError::ValueTooLarge {
         value: value.into(),
     })
+}
+
+pub fn fast_roll_many(rng: &mut impl Rng, quantity: i64, power: i64) -> RollerResult<i64> {
+    use RollerError::*;
+
+    // This would happen with the following logic anyway
+    // Just an early return
+    if quantity == 0 || power == 0 {
+        return Ok(0);
+    }
+
+    let mut sum = 0i64;
+
+    for _ in 0..quantity.abs() {
+        let n = rng.gen_range(1..=power.abs());
+        sum = sum.checked_add(n).ok_or(Overflow)?;
+    }
+
+    // TODO: Check these
+    Ok(sum.mul(quantity.signum() * power.signum()))
 }
 
 #[derive(Debug, Default, Serialize, Clone, Copy, Deserialize, PartialEq, Eq, Hash)]
@@ -211,22 +233,4 @@ pub fn augmented_roll(
     }
 
     apply_augments(out, augments.into_iter())
-}
-
-pub fn simple_roll(rng: &mut impl Rng, quantity: i64, power: i64) -> RollerResult<i64> {
-    use RollerError::*;
-
-    if quantity == 0 || power == 0 {
-        return Ok(0);
-    }
-
-    let mut sum = 0i64;
-
-    for _ in 0..quantity.abs() {
-        let n = rng.gen_range(1..=power.abs());
-        sum = sum.checked_add(n).ok_or(Overflow)?;
-    }
-
-    // TODO: Check these
-    Ok(sum.mul(quantity.signum() * power.signum()))
 }

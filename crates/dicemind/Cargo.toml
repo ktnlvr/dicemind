@@ -11,6 +11,7 @@ rand = "0.8.5"
 serde = { version = "1.0.195", features = ["derive"] }
 smallvec = { version = "1.13.1", features = ["serde"] }
 thiserror = "1.0.56"
+bitflags = "2.5.0"
 
 [dev-dependencies]
 serenity = "0.12"

@@ -8,6 +8,10 @@
 
 ### dicemind-web
 
+## Rollers
+
+**Naive** roller stores all the dice it operates on and does not optimize the dice roll queries. It can show the results of each dice roll and operation.
+
 ## Syntax
 
 ### Arithmetic

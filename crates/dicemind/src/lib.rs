@@ -11,7 +11,7 @@ pub mod syntax;
 mod visitor;
 
 pub mod prelude {
-    pub use crate::interpreter::StandardFastRoller;
+    pub use crate::interpreter::StandardNaiveRoller;
     pub use crate::parser::{parse, ParsingError};
     pub use crate::syntax::Expression;
 }

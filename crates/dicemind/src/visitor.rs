@@ -44,7 +44,18 @@ pub trait Visitor<T> {
         quantity: Option<T>,
         power: Option<T>,
         augments: SmallVec<[Augmentation; 1]>,
-    ) -> T;
+    ) -> T {
+        self.visit_dice_UPDATED(quantity.unwrap(), power.unwrap(), augments)
+    }
+
+    fn visit_dice_UPDATED(
+        &mut self,
+        quantity: T,
+        power: T,
+        augments: SmallVec<[Augmentation; 1]>,
+    ) -> T {
+        unimplemented!()
+    }
 
     fn visit_constant(&mut self, c: Integer) -> T;
 

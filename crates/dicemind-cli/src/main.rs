@@ -6,7 +6,7 @@ use dicemind::{
     prelude::*,
 };
 use human_panic::setup_panic;
-use simulate::{print_chart, simulate, SimulationOptions};
+use simulate::{print_chart, SimulationOptions};
 use std::error::Error;
 
 mod command;
@@ -52,15 +52,10 @@ fn roll(expr: Expression) -> Result<(), Box<dyn Error + 'static>> {
 }
 
 fn sim(
-    options: SimulationOptions,
-    display: DisplayOptions,
+    _options: SimulationOptions,
+    _display: DisplayOptions,
 ) -> Box<dyn Fn(Expression) -> Result<(), Box<dyn Error + 'static>>> {
-    Box::new(move |expr: Expression| {
-        let ft = simulate(expr, options)?;
-        print_chart(display, [((0xFF, 0xFF, 0xFF), &ft)].into_iter());
-
-        Ok(())
-    })
+    todo!()
 }
 
 pub fn main() -> Result<(), Box<dyn Error + 'static>> {
