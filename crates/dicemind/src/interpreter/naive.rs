@@ -71,8 +71,10 @@ fn optional_big_uint_to_usize_or_1(n: Option<BigUint>) -> usize {
 }
 
 fn augment(
+    rng: &mut impl Rng,
     mut dice: Vec<TaggedDiceRoll>,
     augments: impl Iterator<Item = Augmentation>,
+    options: &RollerOptions,
     power: i64,
 ) -> RollerResult<Vec<TaggedDiceRoll>> {
     for augment in augments {
@@ -82,38 +84,70 @@ fn augment(
 
                 let mut indices_high_to_low = Vec::<usize>::with_capacity(n);
                 for (i, _) in dice.iter().enumerate() {
-                    let (Ok(idx) | Err(idx)) = indices_high_to_low.binary_search_by(|j| dice[*j].cmp(&dice[i]));
+                    let (Ok(idx) | Err(idx)) =
+                        indices_high_to_low.binary_search_by(|j| dice[*j].cmp(&dice[i]));
                     indices_high_to_low.insert(idx, i);
                 }
 
-                use SelectorOp::*;
                 use Affix::*;
+                use SelectorOp::*;
 
                 // Keeping high is the same as dropping low
                 // Keeping low is the same as dropping high
                 match (op, affix) {
-                    (Keep, Low) | (Drop, High) => {},
+                    (Keep, Low) | (Drop, High) => {}
                     (Keep, High) | (Drop, Low) => indices_high_to_low.reverse(),
                 }
-                let keep_indices = HashSet::<_, RandomState>::from_iter(indices_high_to_low.into_iter().take(n));
+                let keep_indices =
+                    HashSet::<_, RandomState>::from_iter(indices_high_to_low.into_iter().take(n));
 
                 for (i, d) in dice.iter_mut().enumerate() {
                     if !keep_indices.contains(&i) {
-                        d.discard();
+                        d.mark_discarded();
                     }
                 }
             }
             Augmentation::Filter { op, selector } => {
                 for d in &mut dice {
                     if should_selector_discard(d.value, selector.clone(), op) {
-                        d.discard();
+                        d.mark_discarded();
                     }
                 }
             }
             Augmentation::Emphasis { n } => {
                 let n = optional_big_uint_to_usize_or_1(n);
             }
-            Augmentation::Explode { selector } => {}
+            Augmentation::Explode { selector } => {
+                let mut active_dice = &mut dice[..];
+
+                loop {
+                    let mut exploded = 0;
+
+                    for d in active_dice.iter_mut() {
+                        let should_explode = match selector {
+                            Some(ref sel) => sel.matches(d.value),
+                            None => d.value == power,
+                        };
+
+                        if should_explode {
+                            d.mark_exploded();
+                            exploded += 1;
+                        }
+                    }
+
+                    let idx = dice.len();
+                    dice.extend(roll_many(rng, exploded as i64, power));
+                    active_dice = &mut dice[idx..];
+                    
+                    for d in active_dice.iter_mut() {
+                        d.mark_explosive();
+                    }
+
+                    if exploded == 0 || !options.chain_explosions() {
+                        break;
+                    }
+                }
+            }
         }
     }
 
@@ -123,10 +157,15 @@ fn augment(
 bitflags::bitflags! {
     #[derive(Clone, Copy, Default, Debug)]
     pub struct DiceRollTag: u32 {
+        // The value of this dice is very low
         const FAIL = 1 << 0;
+        // The value of this dice is the maximum possible
         const SUCCESS = 1 << 1;
-        const EXPLODES = 1 << 2;
-        const EXPLOSION = 1 << 3;
+        // This dice is coming from an explosion
+        const EXPLOSIVE = 1 << 2;
+        // This dice has exploded to produce more dice
+        const EXPLODED = 1 << 3;
+        // This dice was discarded by a truncation or filter
         const DISCARDED = 1 << 4;
     }
 }
@@ -179,7 +218,7 @@ impl TaggedDiceRoll {
         self
     }
 
-    fn with_fail_on_1(mut self) -> Self {
+    fn with_fail_on_1(self) -> Self {
         self.with_fail_on(1)
     }
 
@@ -191,19 +230,18 @@ impl TaggedDiceRoll {
         self
     }
 
-    fn with_exploding_on(mut self, explode: i64) -> Self {
-        if self.value == explode {
-            self.tag |= DiceRollTag::EXPLODES;
-        }
-
-        self
+    /// Label the dice as coming from an explosion
+    fn mark_explosive(&mut self) {
+        self.tag |= DiceRollTag::EXPLOSIVE;
     }
 
-    fn exploded(&mut self) {
-        self.tag |= DiceRollTag::EXPLOSION;
+    /// Label the dice as having exploded
+    fn mark_exploded(&mut self) {
+        self.tag |= DiceRollTag::EXPLODED;
     }
 
-    fn discard(&mut self) {
+    /// Exclude this dice when tallying the total
+    fn mark_discarded(&mut self) {
         self.tag |= DiceRollTag::DISCARDED;
     }
 }
@@ -279,8 +317,14 @@ impl<R: Rng> Visitor<NaiveResult> for NaiveRoller<R> {
         if augments.is_empty() {
             Ok(NaiveValue::Dice(dice_rolls))
         } else {
-            augment(dice_rolls.into_vec(), augments.into_iter(), power)
-                .map(|dice| NaiveValue::Dice(dice.into_iter().collect()))
+            augment(
+                &mut self.rng,
+                dice_rolls.into_vec(),
+                augments.into_iter(),
+                &self.options,
+                power,
+            )
+            .map(|dice| NaiveValue::Dice(dice.into_iter().collect()))
         }
     }
 
